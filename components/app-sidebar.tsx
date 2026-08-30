@@ -9,12 +9,17 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarMenuSub,
+  SidebarMenuSubButton,
+  SidebarMenuSubItem,
   SidebarRail,
   SidebarFooter,
 } from "@/components/ui/sidebar"
 import { SignOut } from "@phosphor-icons/react"
+import { Plus, Minus } from "lucide-react"
 import { signOut } from "next-auth/react"
 import { usePathname } from "next/navigation"
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 
 export function AppSidebar({ user, ...props }: React.ComponentProps<typeof Sidebar> & { user: any }) {
   const pathname = usePathname()
@@ -25,7 +30,16 @@ export function AppSidebar({ user, ...props }: React.ComponentProps<typeof Sideb
     { title: "Bulletins", url: "/dashboard/bulletins", roles: ["administrateur", "gestionnaire_rh", "comptable", "directeur", "employe"] },
     { title: "Périodes", url: "/dashboard/periodes", roles: ["administrateur", "gestionnaire_rh", "comptable", "directeur"] },
     { title: "Rapports", url: "/dashboard/rapports", roles: ["administrateur", "gestionnaire_rh", "comptable", "directeur"] },
-    { title: "Paramètres", url: "/dashboard/parametres", roles: ["administrateur"] },
+    { 
+      title: "Paramètres", 
+      url: "/dashboard/parametres", 
+      roles: ["administrateur"],
+      items: [
+        { title: "Paramètres globaux", url: "/dashboard/parametres/globaux" },
+        { title: "Rubriques", url: "/dashboard/parametres/rubriques" },
+        { title: "Barème IRPP (OTR)", url: "/dashboard/parametres/bareme" },
+      ]
+    },
     { title: "Utilisateurs", url: "/dashboard/utilisateurs", roles: ["administrateur"] },
     { title: "Audit", url: "/dashboard/audit", roles: ["administrateur"] },
   ]
@@ -42,7 +56,6 @@ export function AppSidebar({ user, ...props }: React.ComponentProps<typeof Sideb
               <div className="flex flex-col gap-0.5 leading-none">
                 <span className="font-semibold">Solutech Innovation</span>
                 <span className="font-light">Group</span>
-
               </div>
             </SidebarMenuButton>
           </SidebarMenuItem>
@@ -53,6 +66,41 @@ export function AppSidebar({ user, ...props }: React.ComponentProps<typeof Sideb
           <SidebarMenu>
             {filteredNav.map((item) => {
               const isActive = pathname === item.url || pathname?.startsWith(item.url + '/')
+              
+              if (item.items) {
+                return (
+                  <Collapsible
+                    key={item.title}
+                    defaultOpen={isActive}
+                    className="group/collapsible"
+                  >
+                    <SidebarMenuItem>
+                      <CollapsibleTrigger render={<SidebarMenuButton />}>
+                        {item.title}{" "}
+                        <Plus className="ml-auto group-data-open/collapsible:hidden" />
+                        <Minus className="ml-auto hidden group-data-open/collapsible:block" />
+                      </CollapsibleTrigger>
+                      {item.items?.length ? (
+                        <CollapsibleContent>
+                          <SidebarMenuSub>
+                            {item.items.map((subItem) => (
+                              <SidebarMenuSubItem key={subItem.title}>
+                                <SidebarMenuSubButton
+                                  render={<a href={subItem.url} />}
+                                  isActive={pathname === subItem.url}
+                                >
+                                  {subItem.title}
+                                </SidebarMenuSubButton>
+                              </SidebarMenuSubItem>
+                            ))}
+                          </SidebarMenuSub>
+                        </CollapsibleContent>
+                      ) : null}
+                    </SidebarMenuItem>
+                  </Collapsible>
+                )
+              }
+
               return (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton isActive={isActive} onClick={() => window.location.href = item.url}>

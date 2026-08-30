@@ -803,11 +803,11 @@ TÂCHE : Module paramétrage (admin uniquement).
    GET /api/parametres/bareme-irpp
    PUT /api/parametres/bareme-irpp — admin + logAudit
 
-2. Page src/app/(dashboard)/parametres/page.tsx avec Tabs Shadcn :
-   Onglet 1 "Paramètres globaux" : modifier taux CNSS, AMU, abattement IRPP,
-     seuil ancienneté, plafond ancienneté, nb jours/mois
-   Onglet 2 "Rubriques" : DataTable + Switch actif/inactif + modifier taux
-   Onglet 3 "Barème IRPP (OTR)" : afficher et modifier les 8 tranches annuelles
+2. Page src/app/(dashboard)/parametres/page.tsx with collapsible submenus (sidebar-05 existante là déjà, utilise le) :
+   submenu 1 "Paramètres globaux" : modifier taux CNSS, AMU, abattement IRPP,
+     seuil ancienneté, plafond ancienneté, nb jours/mois (fieldset shadcn centré comme dans nouveau employé)
+   submenu 2 "Rubriques" : DataTable + checkbox actif/inactif + modifier taux (inline lorsqu'on fais un focus sur le champs) (utilise Data Table.md pour cette partie aussi)
+   submenu 3 "Barème IRPP (OTR)" : afficher et modifier les 8 tranches annuelles (fieldset shadcn centré comme dans nouveau employé)
 
 Toute modification loggée dans audit_logs. Accès : administrateur uniquement.
 ```
