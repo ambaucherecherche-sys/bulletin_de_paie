@@ -862,9 +862,9 @@ PARTIE B — API Routes bulletins :
   SQL cumuls : ON DUPLICATE KEY UPDATE
 
 PARTIE C — Pages Shadcn :
-  bulletins/page.tsx — DataTable + filtres + badges (Brouillon/Validé/Archivé)
-  bulletins/nouveau/page.tsx — Select employé+période + champs variables + aperçu
-  bulletins/[id]/page.tsx — tableau 21 rubriques dans l'ordre exact + cumuls bas
+  bulletins/page.tsx — DataTable + filtres + badges (Brouillon/Validé/Archivé) (Data Table.md)
+  bulletins/nouveau/page.tsx — Select employé+période + champs variables + aperçu (fieldset centré existant)
+  bulletins/[id]/page.tsx — tableau 21 rubriques dans l'ordre exact + cumuls bas (Data Table.md)
 ```
 
 ---
