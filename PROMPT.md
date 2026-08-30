@@ -723,7 +723,7 @@ Contexte : Projet SOLUTECH (voir PROMPT.md). Auth en place.
 
 TÂCHE : Module complet de gestion des employés.
 
-1. Dans src/lib/calcul-paie.ts, implémente UNIQUEMENT :
+1. Dans /lib/calcul-paie.ts, implémente UNIQUEMENT :
    - calculerAnciennete(dateEntree: Date): { annees: number, mois: number }
      (années entières de date à date)
    - calculerTauxAnciennete(annees: number): number
@@ -738,9 +738,45 @@ TÂCHE : Module complet de gestion des employés.
    PUT /api/employes/[id] — modifier + logAudit
    DELETE /api/employes/[id] — soft delete actif=0 + logAudit
 
-3. Pages Shadcn/ui :
-   - employes/page.tsx : DataTable, recherche, badge Actif/Inactif, bouton créer
-   - employes/nouveau/page.tsx : formulaire react-hook-form + Zod
+3. Pages Shadcn/ui :ATTENTION: je veux exactement le même datatable shadcn qui se trouve dans Data Table.md
+   - employes/page.tsx : DataTable ( Data Table.md), recherche, badge Actif/Inactif, bouton créer
+   - employes/nouveau/page.tsx attention : adapte ce fieldset pour cette partie:import {
+  Field,
+  FieldDescription,
+  FieldGroup,
+  FieldLabel,
+  FieldLegend,
+  FieldSet,
+} from "@/components/ui/field"
+import { Input } from "@/components/ui/input"
+
+export function FieldFieldset() {
+  return (
+    <FieldSet className="w-full max-w-sm">
+      <FieldLegend>Address Information</FieldLegend>
+      <FieldDescription>
+        We need your address to deliver your order.
+      </FieldDescription>
+      <FieldGroup>
+        <Field>
+          <FieldLabel htmlFor="street">Street Address</FieldLabel>
+          <Input id="street" type="text" placeholder="123 Main St" />
+        </Field>
+        <div className="grid grid-cols-2 gap-4">
+          <Field>
+            <FieldLabel htmlFor="city">City</FieldLabel>
+            <Input id="city" type="text" placeholder="New York" />
+          </Field>
+          <Field>
+            <FieldLabel htmlFor="zip">Postal Code</FieldLabel>
+            <Input id="zip" type="text" placeholder="90502" />
+          </Field>
+        </div>
+      </FieldGroup>
+    </FieldSet>
+  )
+}
+: formulaire react-hook-form + Zod
      Champs : nom, prénom, date_naissance, date_entree, situation_matrimoniale (Select),
      nb_personnes_charge, poste, departement, classement, salaire_base,
      salaire_categoriel (champ important pour PA02), nif, numero_cnss,
