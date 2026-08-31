@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { CheckCircle, Trash2, ArrowLeft, Printer, MoreHorizontal } from 'lucide-react';
+import { CheckCircle, Trash2, ArrowLeft, Printer, MoreHorizontal, FileDown } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -154,6 +154,16 @@ export default function BulletinDetail({ params }: { params: Promise<{ id: strin
               <DropdownMenuLabel>Actions</DropdownMenuLabel>
               <DropdownMenuItem onClick={() => window.print()}>
                 <Printer className="w-4 h-4 mr-2" /> Imprimer
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => {
+                  const a = document.createElement('a');
+                  a.href = `/api/bulletins/${fetchId}/pdf`;
+                  a.download = `bulletin-${bulletin.numero}.pdf`;
+                  a.click();
+                }}
+              >
+                <FileDown className="w-4 h-4 mr-2" /> Télécharger PDF
               </DropdownMenuItem>
               {isBrouillon && (
                 <DropdownMenuItem onClick={handleValidate} disabled={validating || deleting}>

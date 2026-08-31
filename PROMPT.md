@@ -880,7 +880,7 @@ Crée src/lib/pdf-bulletin.ts :
   genererBulletinPDF(bulletin: BulletinComplet): Promise<Buffer>
 
 Structure EXACTE du PDF (reproduire le modèle N°20-2026) :
-1. EN-TÊTE : logo SOLUTECH gauche | "BULLETIN DE PAIE N°XX-XXXX" droite | adresse
+1. EN-TÊTE : Nom complet, fonction |logo SOLUTECH (logo.png) | "BULLETIN DE PAIE N°XX-XXXX" droite | adresse (INTEGRATEUR DE SOLUTION INFORMATIQUE .... TEL 70...)
 2. BANDEAU identification : Matricule | Classement | Situation Matri. | N°CNSS | NIF | Mois | Période
 3. TABLEAU 21 RUBRIQUES (ordres 1→21) :
    Colonnes : Code | Désignation | Base | Taux/Nb | Retenues | Gains
