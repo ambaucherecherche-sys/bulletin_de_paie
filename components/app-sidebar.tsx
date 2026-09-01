@@ -20,31 +20,32 @@ import { Plus, Minus } from "lucide-react"
 import { signOut } from "next-auth/react"
 import { usePathname } from "next/navigation"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
+import { peutAcceder, Role, Module } from "@/lib/permissions"
 
 export function AppSidebar({ user, ...props }: React.ComponentProps<typeof Sidebar> & { user: any }) {
   const pathname = usePathname()
 
   const navItems = [
-    { title: "Tableau de bord", url: "/dashboard", roles: ["administrateur", "gestionnaire_rh", "directeur", "comptable", "employe"] },
-    { title: "Employés", url: "/dashboard/employes", roles: ["administrateur", "gestionnaire_rh", "comptable", "directeur"] },
-    { title: "Bulletins", url: "/dashboard/bulletins", roles: ["administrateur", "gestionnaire_rh", "comptable", "directeur", "employe"] },
-    { title: "Périodes", url: "/dashboard/periodes", roles: ["administrateur", "gestionnaire_rh", "comptable", "directeur"] },
-    { title: "Rapports", url: "/dashboard/rapports", roles: ["administrateur", "gestionnaire_rh", "comptable", "directeur"] },
+    { title: "Tableau de bord", url: "/dashboard", module: "dashboard" },
+    { title: "Employés", url: "/dashboard/employes", module: "employes" },
+    { title: "Bulletins", url: "/dashboard/bulletins", module: "bulletins_lire" },
+    { title: "Périodes", url: "/dashboard/periodes", module: "periodes" },
+    { title: "Rapports", url: "/dashboard/rapports", module: "rapports" },
     { 
       title: "Paramètres", 
       url: "/dashboard/parametres", 
-      roles: ["administrateur"],
+      module: "parametres",
       items: [
         { title: "Paramètres globaux", url: "/dashboard/parametres/globaux" },
         { title: "Rubriques", url: "/dashboard/parametres/rubriques" },
         { title: "Barème IRPP (OTR)", url: "/dashboard/parametres/bareme" },
       ]
     },
-    { title: "Utilisateurs", url: "/dashboard/utilisateurs", roles: ["administrateur"] },
-    { title: "Audit", url: "/dashboard/audit", roles: ["administrateur"] },
+    { title: "Utilisateurs", url: "/dashboard/utilisateurs", module: "utilisateurs" },
+    { title: "Audit", url: "/dashboard/audit", module: "audit" },
   ]
 
-  const filteredNav = navItems.filter(item => item.roles.includes(user?.role))
+  const filteredNav = navItems.filter(item => peutAcceder(user?.role as Role, item.module as Module))
 
   return (
     <Sidebar {...props}>

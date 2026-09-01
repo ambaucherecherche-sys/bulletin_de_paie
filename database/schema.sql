@@ -7,6 +7,9 @@ CREATE TABLE utilisateurs (
   role ENUM('administrateur','gestionnaire_rh','comptable','directeur','employe') NOT NULL DEFAULT 'employe',
   actif TINYINT(1) NOT NULL DEFAULT 1,
   derniere_connexion DATETIME,
+  must_change_password TINYINT(1) NOT NULL DEFAULT 0,
+  password_expires_at DATETIME,
+  temp_password_hash VARCHAR(255),
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );

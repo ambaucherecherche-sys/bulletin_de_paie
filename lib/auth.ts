@@ -26,27 +26,41 @@ export const authOptions: NextAuthOptions = {
           throw new Error('Identifiants incorrects ou compte inactif');
         }
 
+        if (user.must_change_password === 1) {
+          const expiresAt = new Date(user.password_expires_at);
+          const now = new Date();
+          if (now > expiresAt) {
+            throw new Error('Mot de passe temporaire expiré. Contactez l\'administrateur.');
+          }
+        }
+
         const isPasswordValid = await bcrypt.compare(credentials.password, user.password_hash);
 
         if (!isPasswordValid) {
           throw new Error('Identifiants incorrects');
         }
 
-        // Mettre à jour la date de dernière connexion
-        await query('UPDATE utilisateurs SET derniere_connexion = NOW() WHERE id = ?', [user.id]);
+        const isRestricted = user.must_change_password === 1;
 
-        // Audit
-        await logAudit({
-          userId: user.id,
-          action: 'CONNEXION',
-          details: 'Connexion réussie',
-        });
+        if (!isRestricted) {
+          // Mettre à jour la date de dernière connexion seulement pour les tokens non restreints
+          await query('UPDATE utilisateurs SET derniere_connexion = NOW() WHERE id = ?', [user.id]);
+
+          // Audit
+          await logAudit({
+            userId: user.id,
+            action: 'CONNEXION',
+            details: 'Connexion réussie',
+          });
+        }
 
         return {
           id: user.id.toString(),
           email: user.email,
           name: user.nom,
           role: user.role,
+          mustChangePassword: isRestricted,
+          isRestricted: isRestricted
         };
       }
     })
@@ -55,7 +69,9 @@ export const authOptions: NextAuthOptions = {
     async jwt({ token, user }) {
       if (user) {
         token.id = user.id;
-        token.role = user.role;
+        token.role = (user as any).role;
+        token.mustChangePassword = (user as any).mustChangePassword;
+        token.isRestricted = (user as any).isRestricted;
       }
       return token;
     },
@@ -63,6 +79,8 @@ export const authOptions: NextAuthOptions = {
       if (session.user) {
         session.user.id = token.id as string;
         session.user.role = token.role as string;
+        (session.user as any).mustChangePassword = token.mustChangePassword;
+        (session.user as any).isRestricted = token.isRestricted;
       }
       return session;
     }

@@ -1025,7 +1025,7 @@ TÂCHE : Gestion utilisateurs et journal d'audit.
 3. Pages Shadcn :
    utilisateurs/page.tsx :
      DataTable : Nom | Email | Rôle (Badge coloré par rôle) | Statut | Dernière connexion
-     Dialog création, Switch actif/inactif
+     Dialog création (même modal), checkbox actif/inactif
      Couleurs badges : admin=rouge, rh=bleu, comptable=violet, directeur=orange, employe=gris
    audit/page.tsx : DataTable journal (date, user, action, table, détails)
 ```
