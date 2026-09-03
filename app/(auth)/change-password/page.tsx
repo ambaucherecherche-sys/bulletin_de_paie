@@ -5,7 +5,6 @@ import { useForm, Controller } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 import { signOut } from "next-auth/react"
-import { useRouter } from "next/navigation"
 import { CheckCircle2, XCircle } from "lucide-react"
 
 import { cn } from "@/lib/utils"
@@ -44,7 +43,6 @@ function RequirementItem({ met, label }: { met: boolean, label: string }) {
 }
 
 export default function ChangePasswordPage() {
-  const router = useRouter()
   const [loading, setLoading] = useState(false)
 
   const {
@@ -100,8 +98,9 @@ export default function ChangePasswordPage() {
         type: "success" 
       })
       
-      await signOut({ redirect: false })
-      router.push("/login")
+      // Hard redirect through NextAuth — ensures the JWT cookie is fully
+      // cleared before the browser reaches /login, preventing stale-token issues.
+      await signOut({ callbackUrl: '/login' })
     } catch (e) {
       toast.add({ title: "Erreur", description: "Erreur de connexion au serveur", type: "error" })
       setLoading(false)

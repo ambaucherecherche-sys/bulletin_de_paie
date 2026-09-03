@@ -5,14 +5,12 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field"
 import { signIn } from "next-auth/react"
-import { useRouter } from "next/navigation"
 import { useState } from "react"
 
 export function LoginForm({
   className,
   ...props
 }: React.ComponentProps<"form">) {
-  const router = useRouter()
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
 
@@ -35,8 +33,9 @@ export function LoginForm({
       setError("Identifiants incorrects ou compte inactif")
       setLoading(false)
     } else {
-      router.push("/dashboard")
-      router.refresh()
+      // Hard redirect — forces a real HTTP request so the middleware reads
+      // the fresh JWT cookie rather than a cached client-side navigation.
+      window.location.href = '/dashboard'
     }
   }
 

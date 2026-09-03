@@ -435,23 +435,23 @@
 ## PHASE 10 — Module 6 : États, Rapports & Dashboard (Semaine 5–6)
 
 ### 10.1 API Routes — Rapports
-- [ ] 🔴 `GET /api/rapports/journal-paie?mois=&annee=`
-- [ ] 🔴 `GET /api/rapports/cnss?mois=&annee=`
-- [ ] 🔴 `GET /api/rapports/amu?mois=&annee=`
-- [ ] 🔴 `GET /api/rapports/irpp?mois=&annee=`
-- [ ] 🟠 `GET /api/rapports/masse-salariale?annee=`
-- [ ] 🟠 `GET /api/rapports/attestation/[employe_id]`
-- [ ] 🟠 `GET /api/rapports/fiche-virement?mois=&annee=`
+- [x] 🔴 `GET /api/rapports/journal-paie?mois=&annee=`
+- [x] 🔴 `GET /api/rapports/cnss?mois=&annee=`
+- [x] 🔴 `GET /api/rapports/amu?mois=&annee=`
+- [x] 🔴 `GET /api/rapports/irpp?mois=&annee=`
+- [x] 🟠 `GET /api/rapports/masse-salariale?annee=`
+- [x] 🟠 `GET /api/rapports/attestation/[employe_id]`
+- [x] 🟠 `GET /api/rapports/fiche-virement?mois=&annee=`
 - [ ] 🟡 `GET /api/rapports/livre-paie?annee=`
-- [ ] 🔴 Export `?format=pdf` (PDFKit) et `?format=excel` (exceljs) sur chaque rapport
+- [x] 🔴 Export `?format=pdf` (PDFKit) et `?format=excel` (exceljs) sur chaque rapport
 
 ### 10.2 API Route Dashboard
-- [ ] 🔴 `GET /api/dashboard` → nb_employes_actifs, masse_salariale_mois, nb_bulletins_valides, total_cnss, total_amu, evolution_3_mois
+- [x] 🔴 `GET /api/dashboard` → nb_employes_actifs, masse_salariale_mois, nb_bulletins_valides, total_cnss, total_amu, evolution_3_mois
 
 ### 10.3 Pages Frontend (Shadcn + recharts)
-- [ ] 🔴 `src/app/(dashboard)/dashboard/page.tsx` — 4 Cards + BarChart + PieChart
-- [ ] 🔴 `src/app/(dashboard)/rapports/page.tsx` — Tabs + sélecteurs mois/année + DataTable + ExportButtons
-- [ ] 🟠 `src/components/rapports/ExportButtons.tsx`
+- [x] 🔴 `src/app/(dashboard)/dashboard/page.tsx` — 4 Cards + BarChart + PieChart
+- [x] 🔴 `src/app/(dashboard)/rapports/page.tsx` — Tabs + sélecteurs mois/année + DataTable + ExportButtons
+- [x] 🟠 `src/components/rapports/ExportButtons.tsx`
 
 ---
 

@@ -16,6 +16,16 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
 import Link from 'next/link';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 export default function BulletinDetail({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
@@ -23,6 +33,8 @@ export default function BulletinDetail({ params }: { params: Promise<{ id: strin
   const [loading, setLoading] = useState(true);
   const [validating, setValidating] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [validateOpen, setValidateOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
 
   const fetchId = React.use(params).id;
 
@@ -45,8 +57,8 @@ export default function BulletinDetail({ params }: { params: Promise<{ id: strin
     fetchBulletin();
   }, [fetchId]);
 
-  const handleValidate = async () => {
-    if (!confirm('Êtes-vous sûr de vouloir valider ce bulletin ? Cette action est irréversible.')) return;
+  const handleValidate = async (e?: React.MouseEvent) => {
+    if (e) e.preventDefault();
     try {
       setValidating(true);
       const res = await fetch(`/api/bulletins/${fetchId}/valider`, { method: 'POST' });
@@ -54,6 +66,7 @@ export default function BulletinDetail({ params }: { params: Promise<{ id: strin
       if (!res.ok) throw new Error(json.error);
       toast.success('Bulletin validé avec succès');
       fetchBulletin();
+      setValidateOpen(false);
     } catch (err: any) {
       toast.error(err.message);
     } finally {
@@ -61,8 +74,8 @@ export default function BulletinDetail({ params }: { params: Promise<{ id: strin
     }
   };
 
-  const handleDelete = async () => {
-    if (!confirm('Voulez-vous vraiment supprimer ce brouillon ?')) return;
+  const handleDelete = async (e?: React.MouseEvent) => {
+    if (e) e.preventDefault();
     try {
       setDeleting(true);
       const res = await fetch(`/api/bulletins/${fetchId}`, { method: 'DELETE' });
@@ -166,7 +179,7 @@ export default function BulletinDetail({ params }: { params: Promise<{ id: strin
                 <FileDown className="w-4 h-4 mr-2" /> Télécharger PDF
               </DropdownMenuItem>
               {isBrouillon && (
-                <DropdownMenuItem onClick={handleValidate} disabled={validating || deleting}>
+                <DropdownMenuItem onClick={() => setValidateOpen(true)} disabled={validating || deleting}>
                   <CheckCircle className="w-4 h-4 mr-2" /> Valider
                 </DropdownMenuItem>
               )}
@@ -176,7 +189,7 @@ export default function BulletinDetail({ params }: { params: Promise<{ id: strin
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
                   className="text-destructive focus:text-destructive"
-                  onClick={handleDelete}
+                  onClick={() => setDeleteOpen(true)}
                   disabled={deleting || validating}
                 >
                   <Trash2 className="w-4 h-4 mr-2" /> Supprimer
@@ -186,6 +199,44 @@ export default function BulletinDetail({ params }: { params: Promise<{ id: strin
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
+
+      <AlertDialog open={validateOpen} onOpenChange={setValidateOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Valider ce bulletin ?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Êtes-vous sûr de vouloir valider ce bulletin ? Cette action est irréversible et verrouillera le document.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={validating}>Annuler</AlertDialogCancel>
+            <AlertDialogAction onClick={handleValidate} disabled={validating}>
+              {validating ? 'Validation...' : 'Valider'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Supprimer ce brouillon ?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Voulez-vous vraiment supprimer ce bulletin (brouillon) ? Cette action supprimera les données.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Annuler</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              disabled={deleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleting ? 'Suppression...' : 'Supprimer'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <div className="bg-white text-black p-8 font-sans text-[11px] print:p-0 border shadow-sm">
         

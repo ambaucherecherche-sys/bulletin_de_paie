@@ -1055,15 +1055,15 @@ TÂCHE : Module états, rapports, exports et tableau de bord.
 
 3. Pages Shadcn :
    dashboard/page.tsx :
-     4 Cards (employés, masse salariale, CNSS, bulletins validés)
-     recharts BarChart évolution masse salariale 3 mois
-     recharts PieChart gains vs retenues
+     4 Cards (employés, masse salariale, CNSS, bulletins validés) (même composant card que /bulletionpaie/next-shadcn-admin-dashboard/src/app/(main)/dashboard/crm)
+      BarChart évolution masse salariale 3 mois (utilise exactement BarChart.md)
+      PieChart gains vs retenues (utilise exactement PieChart.md)
 
    rapports/page.tsx :
-     Tabs par type de rapport
+     utilise le composant le mieux adapté entre collapsible submenus comme l'onglet paramètres ou Tabs shadcn comme dans /employes/[id] par type de rapport
      Select mois + Select année
-     DataTable résultats
-     Composant ExportButtons (PDF + Excel)
+     DataTable résultats même tableau que /employes
+     Composant ExportButtons (PDF + Excel) (shadcn)
 ```
 
 ---

@@ -73,10 +73,15 @@ export const columns = columnHelper.columns([
   }),
   columnHelper.accessor('details', {
     header: 'Détails',
-    cell: ({ row }) => (
-      <span className="text-sm max-w-xs block truncate" title={row.original.details ?? ''}>
-        {row.original.details ?? '—'}
-      </span>
-    ),
+    cell: ({ row }) => {
+      const text = row.original.details;
+      if (!text) return <span className="text-sm text-muted-foreground">—</span>;
+      const truncated = text.length > 20 ? text.slice(0, 20) + '...' : text;
+      return (
+        <span className="text-sm cursor-help" title={text}>
+          {truncated}
+        </span>
+      );
+    },
   }),
 ]);

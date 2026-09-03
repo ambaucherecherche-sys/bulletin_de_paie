@@ -108,7 +108,7 @@ export function DataTable<TData extends RowData>({
         {/* Select utilisateur */}
         <Select
           value={filters.userId || '__all__'}
-          onValueChange={(v) => onFiltersChange({ ...filters, userId: v === '__all__' ? '' : v })}
+          onValueChange={(v) => onFiltersChange({ ...filters, userId: (v ?? '') === '__all__' ? '' : (v ?? '') })}
         >
           <SelectTrigger className="w-48">
             <SelectValue placeholder="Tous les utilisateurs" />
@@ -128,7 +128,7 @@ export function DataTable<TData extends RowData>({
         {/* Select action */}
         <Select
           value={filters.action || '__all__'}
-          onValueChange={(v) => onFiltersChange({ ...filters, action: v === '__all__' ? '' : v })}
+          onValueChange={(v) => onFiltersChange({ ...filters, action: (v ?? '') === '__all__' ? '' : (v ?? '') })}
         >
           <SelectTrigger className="w-56">
             <SelectValue placeholder="Toutes les actions" />

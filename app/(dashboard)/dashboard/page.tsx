@@ -1,12 +1,22 @@
-export default function DashboardPage() {
-  return (
-    <div className="flex flex-1 flex-col gap-4 p-4">
-      <div className="grid auto-rows-min gap-4 md:grid-cols-3">
-        <div className="aspect-video rounded-xl bg-muted/50" />
-        <div className="aspect-video rounded-xl bg-muted/50" />
-        <div className="aspect-video rounded-xl bg-muted/50" />
-      </div>
-      <div className="min-h-[100vh] flex-1 rounded-xl bg-muted/50 md:min-h-min" />
-    </div>
-  )
+import { headers } from "next/headers"
+import { DashboardClient } from "./dashboard-client"
+
+export default async function DashboardPage() {
+  const headersList = await headers();
+  const protocol = headersList.get("x-forwarded-proto") || "http";
+  const host = headersList.get("host");
+  const baseUrl = `${protocol}://${host}`;
+
+  const res = await fetch(`${baseUrl}/api/dashboard`, {
+    headers: { cookie: headersList.get("cookie") || "" },
+    cache: 'no-store'
+  });
+
+  if (!res.ok) {
+    return <div className="p-8 text-destructive">Erreur lors du chargement du tableau de bord.</div>;
+  }
+
+  const data = await res.json();
+
+  return <DashboardClient data={data} />;
 }
