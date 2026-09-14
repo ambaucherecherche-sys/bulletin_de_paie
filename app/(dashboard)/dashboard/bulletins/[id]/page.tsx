@@ -95,7 +95,8 @@ export default function BulletinDetail({ params }: { params: Promise<{ id: strin
 
   if (!data) return null;
 
-  const { bulletin, cumulActuel } = data;
+  const { bulletin, lignes: lignesBulletin, cumulActuel } = data;
+  const ligneIch15 = (lignesBulletin ?? []).find((l: any) => l.code === 'ICH15');
   const isBrouillon = bulletin.statut === 'brouillon';
   
   const formatVal = (v: any, keepDash: boolean = false) => {
@@ -117,7 +118,7 @@ export default function BulletinDetail({ params }: { params: Promise<{ id: strin
 
   const rows = [
     { code: 'SB01', label: 'SALAIRE DE BASE', base: bulletin.salaire_base, taux: 30, retenues: null, gains: bulletin.salaire_base },
-    { code: 'PA02', label: 'PRIME D\'ANCIENNETE', base: bulletin.salaire_categoriel, taux: bulletin.taux_anciennete > 0 ? (bulletin.taux_anciennete * 100) + '%' : null, retenues: null, gains: bulletin.prime_anciennete },
+    { code: 'PA02', label: 'PRIME D\'ANCIENNETE', base: bulletin.salaire_categoriel, taux: bulletin.taux_anciennete > 0 ? `${bulletin.taux_anciennete}%` : null, retenues: null, gains: bulletin.prime_anciennete },
     { code: 'HS03', label: 'FORFAIT HEURES SUPPLEMENTAIRES', base: bulletin.heures_supp, taux: bulletin.heures_supp > 0 ? 30 : null, retenues: null, gains: bulletin.heures_supp },
     { code: 'ICL13', label: 'INDEMNITE COMPENSATRICE DE LOGEMENT', base: bulletin.indemnite_logement, taux: null, retenues: null, gains: bulletin.indemnite_logement },
     { code: 'ICT14', label: 'INDEMNITE COMPENSATRICE DE TRANSPORT', base: bulletin.indemnite_transport, taux: null, retenues: null, gains: bulletin.indemnite_transport },
@@ -132,10 +133,10 @@ export default function BulletinDetail({ params }: { params: Promise<{ id: strin
     { code: 'RT17', label: 'REMUNERATION TOTALE', bold: true, base: null, taux: null, retenues: null, gains: bulletin.remuneration_totale },
     { code: 'IR04', label: 'PRIMES DE CAISSE', base: null, taux: null, retenues: null, gains: bulletin.primes_caisse, keepDashGains: true },
     { code: 'IR12', label: 'PRIMES DE SALISSURE', base: null, taux: null, retenues: null, gains: bulletin.primes_salissure },
-    { code: 'ICH15', label: 'PRIMES DE CANTINE', base: bulletin.primes_cantine > 0 ? 833 : null, taux: bulletin.primes_cantine > 0 ? 30 : null, retenues: null, gains: bulletin.primes_cantine },
-    { code: 'RAS18', label: 'RETENUE/AVANCE SUR SALAIRE', base: null, taux: null, retenues: bulletin.retenue_avance, gains: null, keepDashRetenues: true },
+    { code: 'ICH15', label: 'PRIMES DE CANTINE', base: ligneIch15?.base ?? null, taux: ligneIch15?.taux_ou_nombre ?? null, retenues: null, gains: bulletin.primes_cantine },
+    { code: 'RAS18', label: 'RETENU/AVANCE SUR SALAIRE', base: null, taux: null, retenues: bulletin.retenue_avance, gains: null, keepDashRetenues: true },
     { code: 'AR19', label: 'AUTRES RETENUES', base: null, taux: null, retenues: bulletin.autres_retenues, gains: null },
-    { code: 'TR20', label: 'TOTAL AUTRES RETENUES', bold: true, base: null, taux: null, retenues: bulletin.total_autres_retenues, gains: null },
+    { code: 'TR20', label: 'TOTAL AUTRES PRIMES', bold: true, base: null, taux: null, retenues: bulletin.total_autres_retenues, gains: null },
     { code: 'SN21', label: 'REMUNERATION NETTE', bold: true, base: null, taux: null, retenues: null, gains: bulletin.remuneration_nette },
   ];
 
@@ -341,7 +342,7 @@ export default function BulletinDetail({ params }: { params: Promise<{ id: strin
             </tr>
             <tr>
               <td className="border border-black p-1 text-left">EXERCICE</td>
-              <td className="border border-black p-1">90</td>
+              <td className="border border-black p-1">{cumulActuel?.nb_jours_exercice ?? (Number(bulletin.mois) * 30)}</td>
               <td className="border border-black p-1">-</td>
               <td className="border border-black p-1">{formatVal(cumulActuel?.cum_irpp)}</td>
               <td className="border border-black p-1">{formatVal(cumulActuel?.cum_cnss)}</td>

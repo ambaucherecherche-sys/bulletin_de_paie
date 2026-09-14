@@ -39,20 +39,22 @@ export async function GET(
 
     const bulletin = bulletins[0];
 
-    // ── Fetch cumuls ────────────────────────────────────────────────────────
-    const cumuls = await query<any>(`
-      SELECT cum_cnss, cum_irpp, cum_brut
-      FROM cumuls
-      WHERE employe_id = ? AND annee = ? AND mois = ?
-    `, [bulletin.employe_id, bulletin.annee, bulletin.mois]);
-
-    const cumul =
-      cumuls.length > 0
-        ? cumuls[0]
-        : { cum_cnss: 0, cum_irpp: 0, cum_brut: 0 };
+    // ── Fetch ICH15 base & nb_jours from lignes_bulletin ───────────────────
+    const lignesIch15 = await query<any>(`
+      SELECT l.base, l.taux_ou_nombre
+      FROM lignes_bulletin l
+      JOIN rubriques r ON l.rubrique_id = r.id
+      WHERE l.bulletin_id = ? AND r.code = 'ICH15'
+      LIMIT 1
+    `, [id]);
+    if (lignesIch15.length > 0) {
+      bulletin.base_ich15    = Number(lignesIch15[0].base);
+      bulletin.nb_jours_ich15 = Number(lignesIch15[0].taux_ou_nombre);
+    }
 
     // ── Generate PDF ────────────────────────────────────────────────────────
-    const pdfBuffer = await genererBulletinPDF(bulletin, cumul);
+    // genererBulletinPDF calcule les cumuls exercice à la volée via le numéro du mois
+    const pdfBuffer = await genererBulletinPDF(bulletin, Number(bulletin.mois) || 1);
 
     const filename = `bulletin-${bulletin.numero}.pdf`;
 

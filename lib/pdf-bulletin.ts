@@ -35,8 +35,9 @@ export interface BulletinComplet {
   // Rubriques de paie
   salaire_base: number;
   salaire_categoriel: number;
-  taux_anciennete: number;
-  prime_anciennete: number;
+  taux_anciennete: number;  // = taux_pa02 (en %)
+  prime_anciennete: number; // = pa02 calculé
+  // PA02 affichage : base = salaire_categoriel, taux = taux_anciennete%
   heures_supp: number;
   indemnite_logement: number;
   indemnite_transport: number;
@@ -51,10 +52,12 @@ export interface BulletinComplet {
   remuneration_totale: number;
   primes_caisse: number;
   primes_salissure: number;
-  primes_cantine: number;
+  primes_cantine: number;   // = ich15 calculé
+  base_ich15?: number;       // base unitaire cantine (depuis lignes_bulletin)
+  nb_jours_ich15?: number;   // nombre de jours cantine (depuis lignes_bulletin)
   retenue_avance: number;
   autres_retenues: number;
-  total_autres_retenues: number;
+  total_autres_retenues: number; // = tr20 = IR04+IR12+ICH15
   remuneration_nette: number;
 }
 
@@ -104,28 +107,33 @@ interface Row {
 }
 
 function buildRows(b: BulletinComplet): Row[] {
+  // taux_anciennete en BDD stocke le taux_pa02 en %
+  const tauxPa02 = Number(b.taux_anciennete);
+  // Pour ICH15, on approxime la base en rétro-calculant si besoin.
+  // La base est stockée dans salaire_categoriel, le calcul est : primes_cantine = base_ich15 × taux_ich15/100
+  // On affiche primes_cantine comme gain, et on laisse base / taux vides (non restockés séparément)
   return [
-    { code: 'SB01',   label: 'SALAIRE DE BASE',                             base: b.salaire_base,               taux: 30,   retenues: null, gains: b.salaire_base },
-    { code: 'PA02',   label: "PRIME D'ANCIENNETE",                          base: b.salaire_categoriel,         taux: b.taux_anciennete > 0 ? `${(b.taux_anciennete * 100).toFixed(0)}%` : null, retenues: null, gains: b.prime_anciennete },
-    { code: 'HS03',   label: 'FORFAIT HEURES SUPPLEMENTAIRES',              base: b.heures_supp || null,        taux: b.heures_supp > 0 ? 30 : null, retenues: null, gains: b.heures_supp },
-    { code: 'ICL13',  label: 'INDEMNITE COMPENSATRICE DE LOGEMENT',         base: b.indemnite_logement || null, taux: null, retenues: null, gains: b.indemnite_logement },
-    { code: 'ICT14',  label: 'INDEMNITE COMPENSATRICE DE TRANSPORT',        base: b.indemnite_transport || null,taux: null, retenues: null, gains: b.indemnite_transport },
+    { code: 'SB01',   label: 'SALAIRE DE BASE',                              base: b.salaire_base,               taux: 30,   retenues: null, gains: b.salaire_base },
+    { code: 'PA02',   label: "PRIME D'ANCIENNETE",                           base: b.salaire_categoriel,         taux: tauxPa02 > 0 ? `${tauxPa02}%` : null, retenues: null, gains: b.prime_anciennete },
+    { code: 'HS03',   label: 'FORFAIT HEURES SUPPLEMENTAIRES',               base: b.heures_supp || null,        taux: b.heures_supp > 0 ? 30 : null, retenues: null, gains: b.heures_supp },
+    { code: 'ICL13',  label: 'INDEMNITE COMPENSATRICE DE LOGEMENT',          base: b.indemnite_logement || null, taux: null, retenues: null, gains: b.indemnite_logement },
+    { code: 'ICT14',  label: 'INDEMNITE COMPENSATRICE DE TRANSPORT',         base: b.indemnite_transport || null,taux: null, retenues: null, gains: b.indemnite_transport },
     { code: 'TIP16',  label: 'TOTAL INDEMNITES ET PRIMES IMPOSABLES', bold: true, base: null, taux: null, retenues: null, gains: b.total_indemnites_imposables },
-    { code: 'SS05',   label: 'SURSALAIRE',                                  base: null,                         taux: null, retenues: null, gains: b.sursalaire, keepDashGains: true },
-    { code: 'SB06',   label: 'SALAIRE BRUT',                        bold: true, base: null, taux: null, retenues: null, gains: b.salaire_brut },
-    { code: 'IRPP08', label: 'IRPP',                                        base: null,                         taux: null, retenues: b.irpp, gains: null },
-    { code: 'CS07',   label: 'CNSS',                                        base: b.salaire_brut,               taux: '4%', retenues: b.cnss, gains: null },
-    { code: 'AM3',    label: 'AMU',                                         base: b.salaire_brut,               taux: '5%', retenues: b.amu, gains: null },
-    { code: 'RL10',   label: 'TOTAL RETENUES LEGALES',               bold: true, base: null, taux: null, retenues: b.total_retenues_legales, gains: null },
-    { code: 'SNR11',  label: 'SALAIRE NET APRES RETENUES LEGALES',   bold: true, base: null, taux: null, retenues: null, gains: b.salaire_net_retenues },
-    { code: 'RT17',   label: 'REMUNERATION TOTALE',                  bold: true, base: null, taux: null, retenues: null, gains: b.remuneration_totale },
-    { code: 'IR04',   label: 'PRIMES DE CAISSE',                            base: null,                         taux: null, retenues: null, gains: b.primes_caisse, keepDashGains: true },
-    { code: 'IR12',   label: 'PRIMES DE SALISSURE',                        base: null,                         taux: null, retenues: null, gains: b.primes_salissure },
-    { code: 'ICH15',  label: 'PRIMES DE CANTINE',                          base: b.primes_cantine > 0 ? 833 : null, taux: b.primes_cantine > 0 ? 30 : null, retenues: null, gains: b.primes_cantine },
-    { code: 'RAS18',  label: 'RETENUE/AVANCE SUR SALAIRE',                 base: null,                         taux: null, retenues: b.retenue_avance, gains: null, keepDashRetenues: true },
-    { code: 'AR19',   label: 'AUTRES RETENUES',                            base: null,                         taux: null, retenues: b.autres_retenues, gains: null },
-    { code: 'TR20',   label: 'TOTAL AUTRES RETENUES',                bold: true, base: null, taux: null, retenues: b.total_autres_retenues, gains: null },
-    { code: 'SN21',   label: 'REMUNERATION NETTE',                   bold: true, base: null, taux: null, retenues: null, gains: b.remuneration_nette },
+    { code: 'SS05',   label: 'SURSALAIRE',                                   base: null,                         taux: null, retenues: null, gains: b.sursalaire, keepDashGains: true },
+    { code: 'SB06',   label: 'SALAIRE BRUT',                         bold: true, base: null, taux: null, retenues: null, gains: b.salaire_brut },
+    { code: 'IRPP08', label: 'IRPP',                                         base: null,                         taux: null, retenues: b.irpp, gains: null },
+    { code: 'CS07',   label: 'CNSS',                                         base: b.salaire_brut,               taux: '4%', retenues: b.cnss, gains: null },
+    { code: 'AM3',    label: 'AMU',                                          base: b.salaire_brut,               taux: '5%', retenues: b.amu, gains: null },
+    { code: 'RL10',   label: 'TOTAL RETENUES LEGALES',                bold: true, base: null, taux: null, retenues: b.total_retenues_legales, gains: null },
+    { code: 'SNR11',  label: 'SALAIRE NET APRES RETENUES LEGALES',    bold: true, base: null, taux: null, retenues: null, gains: b.salaire_net_retenues },
+    { code: 'RT17',   label: 'REMUNERATION TOTALE',                   bold: true, base: null, taux: null, retenues: null, gains: b.remuneration_totale },
+    { code: 'IR04',   label: 'PRIMES DE CAISSE',                             base: null,                         taux: null, retenues: null, gains: b.primes_caisse, keepDashGains: true },
+    { code: 'IR12',   label: 'PRIMES DE SALISSURE',                         base: null,                         taux: null, retenues: null, gains: b.primes_salissure },
+    { code: 'ICH15',  label: 'PRIMES DE CANTINE',                           base: b.base_ich15 || null,             taux: b.nb_jours_ich15 || null, retenues: null, gains: b.primes_cantine },
+    { code: 'RAS18',  label: 'RETENU/AVANCE SUR SALAIRE',                   base: null,                         taux: null, retenues: b.retenue_avance, gains: null, keepDashRetenues: true },
+    { code: 'AR19',   label: 'AUTRES RETENUES',                             base: null,                         taux: null, retenues: b.autres_retenues, gains: null },
+    { code: 'TR20',   label: 'TOTAL AUTRES PRIMES',                   bold: true, base: null, taux: null, retenues: b.total_autres_retenues, gains: null },
+    { code: 'SN21',   label: 'REMUNERATION NETTE',                    bold: true, base: null, taux: null, retenues: null, gains: b.remuneration_nette },
   ];
 }
 
@@ -135,7 +143,7 @@ function buildRows(b: BulletinComplet): Row[] {
 
 export async function genererBulletinPDF(
   bulletin: BulletinComplet,
-  cumul: CumulBulletin
+  mois: number
 ): Promise<Buffer> {
   return new Promise((resolve, reject) => {
     const doc = new PDFDocument({
@@ -420,9 +428,12 @@ export async function genererBulletinPDF(
     }
     Y += CTH_H;
 
+    // Calcul des cumuls exercice à la volée
+    // moisNum = numéro du mois (1=janv, 2=févr, ..., 12=déc)
+    const moisNum = Math.max(1, Math.min(12, Number(mois) || Number(bulletin.mois) || 1));
     const cumDataRows = [
-      ['MOIS',     '30', '-', fmt(bulletin.irpp),  fmt(bulletin.cnss),  fmt(bulletin.salaire_brut), '-'],
-      ['EXERCICE', '90', '-', fmt(cumul.cum_irpp), fmt(cumul.cum_cnss), fmt(cumul.cum_brut),       '-'],
+      ['MOIS',     '30',                   '-', fmt(bulletin.irpp),           fmt(bulletin.cnss),              fmt(bulletin.salaire_brut),              '-'],
+      ['EXERCICE', String(moisNum * 30),   '-', fmt(bulletin.irpp * moisNum), fmt(bulletin.cnss * moisNum),    fmt(bulletin.salaire_brut * moisNum),    '-'],
     ];
 
     const CR_H = 16;

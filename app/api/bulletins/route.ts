@@ -3,7 +3,6 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { query } from '@/lib/db';
 import { logAudit } from '@/lib/audit';
-import { ElementsVariables } from '@/lib/calcul-paie';
 
 export async function GET(req: Request) {
   try {
@@ -86,6 +85,7 @@ export async function POST(req: Request) {
     const numeroStr = `${nextNumber}-${annee}`;
 
     // 4. Insérer le bulletin
+    // taux_anciennete stocke le taux_pa02 (en %) pour rétrocompatibilité
     const insertSql = `
       INSERT INTO bulletins (
         numero, employe_id, periode_id, created_by,
@@ -101,54 +101,72 @@ export async function POST(req: Request) {
     `;
     const insertParams = [
       numeroStr, employe_id, periode_id, session.user.id,
-      result_calcule.salaire_base, result_calcule.salaire_categoriel, result_calcule.prime_anciennete, result_calcule.taux_anciennete,
-      result_calcule.heures_supp, result_calcule.indemnite_logement, result_calcule.indemnite_transport, result_calcule.total_indemnites_imposables,
-      result_calcule.sursalaire, result_calcule.salaire_brut,
-      result_calcule.irpp, result_calcule.cnss, result_calcule.amu, result_calcule.total_retenues_legales, result_calcule.salaire_net_retenues,
+      result_calcule.salaire_base,
+      result_calcule.salaire_categoriel,
+      result_calcule.prime_anciennete,      // = pa02
+      result_calcule.taux_anciennete,       // = taux_pa02
+      result_calcule.heures_supp,
+      result_calcule.indemnite_logement,
+      result_calcule.indemnite_transport,
+      result_calcule.total_indemnites_imposables,
+      result_calcule.sursalaire,
+      result_calcule.salaire_brut,
+      result_calcule.irpp,
+      result_calcule.cnss,
+      result_calcule.amu,
+      result_calcule.total_retenues_legales,
+      result_calcule.salaire_net_retenues,
       result_calcule.remuneration_totale,
-      result_calcule.primes_caisse, result_calcule.primes_salissure, result_calcule.primes_cantine,
-      result_calcule.retenue_avance, result_calcule.autres_retenues, result_calcule.total_autres_retenues,
-      result_calcule.remuneration_nette
+      result_calcule.primes_caisse,
+      result_calcule.primes_salissure,
+      result_calcule.primes_cantine,        // = ich15 calculé
+      result_calcule.retenue_avance,
+      result_calcule.autres_retenues,
+      result_calcule.total_autres_retenues, // TR20 = IR04 + IR12 + ICH15 (TOTAL AUTRES PRIMES)
+      result_calcule.remuneration_nette,
     ];
 
-    const result: any = await query(insertSql, insertParams);
-    const bulletinId = result.insertId;
+    const insertResult: any = await query(insertSql, insertParams);
+    const bulletinId = insertResult.insertId;
 
     // 5. Insérer les lignes (Rubriques)
-    // On associe les valeurs calculées aux ID de rubriques correspondants.
     const rubriques = await query<any>('SELECT id, code FROM rubriques');
-    const getRubId = (code: string) => rubriques.find(r => r.code === code)?.id;
+    const getRubId = (code: string) => rubriques.find((r: any) => r.code === code)?.id;
 
     const lignes = [
-      { code: 'SB01', base: result_calcule.salaire_base, gain: result_calcule.salaire_base },
-      { code: 'PA02', base: result_calcule.salaire_categoriel, gain: result_calcule.prime_anciennete, taux: result_calcule.taux_anciennete * 100 },
-      { code: 'HS03', base: result_calcule.heures_supp, gain: result_calcule.heures_supp },
-      { code: 'SS05', base: result_calcule.sursalaire, gain: result_calcule.sursalaire },
-      { code: 'CS07', base: result_calcule.salaire_brut, retenue: result_calcule.cnss }, // Taux géré globalement
-      { code: 'IRPP08', base: result_calcule.salaire_brut, retenue: result_calcule.irpp },
-      { code: 'ICL13', base: result_calcule.indemnite_logement, gain: result_calcule.indemnite_logement },
-      { code: 'ICT14', base: result_calcule.indemnite_transport, gain: result_calcule.indemnite_transport },
-      { code: 'AM3', base: result_calcule.salaire_brut, retenue: result_calcule.amu },
-      { code: 'IR04', base: result_calcule.primes_caisse, gain: result_calcule.primes_caisse },
-      { code: 'IR12', base: result_calcule.primes_salissure, gain: result_calcule.primes_salissure },
-      { code: 'ICH15', base: result_calcule.primes_cantine, gain: result_calcule.primes_cantine },
-      { code: 'RAS18', base: result_calcule.retenue_avance, retenue: result_calcule.retenue_avance },
-      { code: 'AR19', base: result_calcule.autres_retenues, retenue: result_calcule.autres_retenues },
+      { code: 'SB01',   base: result_calcule.salaire_base,           gain: result_calcule.salaire_base },
+      // PA02 : base = base_pa02 (salaire_categoriel stocké), taux = taux_pa02
+      { code: 'PA02',   base: result_calcule.salaire_categoriel,     gain: result_calcule.prime_anciennete,  taux: result_calcule.taux_anciennete },
+      { code: 'HS03',   base: result_calcule.heures_supp,            gain: result_calcule.heures_supp },
+      { code: 'SS05',   base: result_calcule.sursalaire,             gain: result_calcule.sursalaire },
+      { code: 'ICL13',  base: result_calcule.indemnite_logement,     gain: result_calcule.indemnite_logement },
+      { code: 'ICT14',  base: result_calcule.indemnite_transport,    gain: result_calcule.indemnite_transport },
+      { code: 'IRPP08', base: result_calcule.salaire_brut,           retenue: result_calcule.irpp },
+      { code: 'CS07',   base: result_calcule.salaire_brut,           retenue: result_calcule.cnss },
+      { code: 'AM3',    base: result_calcule.salaire_brut,           retenue: result_calcule.amu },
+      { code: 'IR04',   base: result_calcule.primes_caisse,          gain: result_calcule.primes_caisse },
+      { code: 'IR12',   base: result_calcule.primes_salissure,       gain: result_calcule.primes_salissure },
+      // ICH15 : base = base_ich15, taux = nb_jours_ich15, gain = primes_cantine (calculé)
+      { code: 'ICH15',  base: result_calcule.base_ich15 ?? result_calcule.primes_cantine, taux: result_calcule.nb_jours_ich15 ?? result_calcule.taux_ich15, gain: result_calcule.primes_cantine },
+      { code: 'RAS18',  base: result_calcule.retenue_avance,         retenue: result_calcule.retenue_avance },
+      { code: 'AR19',   base: result_calcule.autres_retenues,        retenue: result_calcule.autres_retenues },
     ];
 
     for (const ligne of lignes) {
       const rid = getRubId(ligne.code);
-      if (rid && (ligne.gain > 0 || ligne.retenue > 0 || ligne.code === 'SB01')) { // SB01 même si 0 (rare)
+      const gain = (ligne as any).gain ?? 0;
+      const retenue = (ligne as any).retenue ?? 0;
+      if (rid && (gain > 0 || retenue > 0 || ligne.code === 'SB01')) {
         await query(`
           INSERT INTO lignes_bulletin (bulletin_id, rubrique_id, base, taux_ou_nombre, montant_retenue, montant_gain)
           VALUES (?, ?, ?, ?, ?, ?)
         `, [
-          bulletinId, 
-          rid, 
-          ligne.base || 0, 
-          ligne.taux || 0, 
-          ligne.retenue || 0, 
-          ligne.gain || 0
+          bulletinId,
+          rid,
+          ligne.base || 0,
+          (ligne as any).taux || 0,
+          retenue,
+          gain,
         ]);
       }
     }

@@ -6,9 +6,7 @@ import {
   calculerBulletinComplet, 
   EmployePaieInfo, 
   ParametresGlobaux, 
-  BaremeIRPP,
   ElementsVariables,
-  calculerAnciennete
 } from '@/lib/calcul-paie';
 import { logAudit } from '@/lib/audit';
 

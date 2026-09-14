@@ -22,30 +22,15 @@ INSERT INTO rubriques (code, designation, type_rubrique, est_calcule, ordre_affi
 ('IR04', 'Primes de Caisse', 'gain', 0, 15),
 ('IR12', 'Primes de Salissure', 'gain', 0, 16),
 ('ICH15', 'Primes de Cantine', 'gain', 0, 17),
-('RAS18', 'Retenue/Avance sur Salaire', 'retenue', 0, 18),
+('RAS18', 'Retenu/Avance sur Salaire', 'retenue', 0, 18),
 ('AR19', 'Autres Retenues', 'retenue', 0, 19),
-('TR20', 'Total Autres Retenues', 'retenue', 1, 20),
+('TR20', 'Total Autres Primes', 'gain', 1, 20),
 ('SN21', 'Rémunération Nette', 'gain', 1, 21);
 
--- c) Les 8 tranches du barème IRPP OTR togolais (annuelles en XOF)
-INSERT INTO bareme_irpp (tranche_min, tranche_max, taux) VALUES
-(0, 900000, 0.00),
-(900001, 3000000, 0.03),
-(3000001, 6000000, 0.10),
-(6000001, 9000000, 0.15),
-(9000001, 12000000, 0.20),
-(12000001, 15000000, 0.25),
-(15000001, 20000000, 0.30),
-(20000001, NULL, 0.35);
-
--- d) Les paramètres globaux
+-- c) Paramètres globaux (taux en %)
 INSERT INTO parametres (cle, valeur, description) VALUES
-('taux_cnss', '0.04', 'Taux de cotisation CNSS employé'),
-('taux_amu', '0.05', 'Taux de cotisation AMU employé'),
-('taux_cotisations_irpp', '0.09', 'Taux total déductible pour IRPP (CNSS + AMU)'),
-('abattement_irpp_taux', '0.28', 'Taux d''abattement forfaitaire IRPP'),
-('abattement_irpp_plafond', '2800000', 'Plafond de l''abattement IRPP'),
-('anciennete_seuil_min', '2', 'Seuil minimum en années pour la prime d''ancienneté'),
-('anciennete_taux_par_an', '0.01', 'Taux par année (1% par an, mais 2% pour 2 ans = 1% par an en réalité)'),
-('anciennete_plafond', '0.25', 'Plafond du taux d''ancienneté (25%)'),
+('taux_cnss', '4', 'Taux CNSS en % (prérempli, modifiable)'),
+('taux_amu', '5', 'Taux AMU en % (prérempli, modifiable)'),
+('taux_irpp', '0', 'Taux IRPP en % (0 = non appliqué)'),
+('nb_jours_mois', '30', 'Nombre de jours par mois'),
 ('nb_jours_travail', '30', 'Nombre de jours de travail par mois par défaut');

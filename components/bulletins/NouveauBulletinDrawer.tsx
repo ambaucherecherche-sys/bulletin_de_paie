@@ -26,8 +26,21 @@ import {
 } from "@/components/ui/drawer";
 import { toast } from 'sonner';
 
-type Employe = { id: number; matricule: string; nom: string; prenom: string };
-type Periode = { id: number; mois: number; annee: number; statut: string };
+type Employe = { 
+  id: number; 
+  matricule: string; 
+  nom: string; 
+  prenom: string;
+  salaire_base?: number;
+  salaire_categoriel?: number;
+};
+
+type Periode = { 
+  id: number; 
+  mois: number; 
+  annee: number; 
+  statut: string;
+};
 
 interface NouveauBulletinDrawerProps {
   trigger?: React.ReactElement | null;
@@ -56,7 +69,6 @@ export function NouveauBulletinDrawer({
 
   const [employeId, setEmployeId] = useState(defaultValues?.employeId || '');
   const [periodeId, setPeriodeId] = useState(defaultValues?.periodeId || '');
-  const [calculating, setCalculating] = useState(false);
   const [saving, setSaving] = useState(false);
   
   const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
@@ -65,18 +77,21 @@ export function NouveauBulletinDrawer({
 
   const [hasFetched, setHasFetched] = useState(false);
 
+  // Éléments variables
   const [variables, setVariables] = useState({
+    base_pa02: '',
+    taux_pa02: '0',
     heures_supp: '0',
     indemnite_logement: '0',
     indemnite_transport: '0',
     sursalaire: '0',
     primes_caisse: '0',
     primes_salissure: '0',
-    primes_cantine: '0',
+    base_ich15: '0',
+    taux_ich15: '0', // Nombre de jours ICH15
     retenue_avance: '0',
-    autres_retenues: '0'
+    autres_retenues: '0',
   });
-
 
   useEffect(() => {
     if (open && !hasFetched) {
@@ -84,7 +99,7 @@ export function NouveauBulletinDrawer({
         try {
           const [resE, resP] = await Promise.all([
             fetch('/api/employes'),
-            fetch('/api/periodes?statut=ouverte')
+            fetch('/api/periodes?statut=ouverte'),
           ]);
           const dataE = await resE.json();
           const dataP = await resP.json();
@@ -99,21 +114,51 @@ export function NouveauBulletinDrawer({
     }
   }, [open, hasFetched]);
 
+  const handleEmployeSelect = (idStr: string) => {
+    setEmployeId(idStr);
+    const emp = employes.find(e => e.id.toString() === idStr);
+    if (emp && emp.salaire_base !== undefined) {
+      setVariables(prev => ({
+        ...prev,
+        base_pa02: String(emp.salaire_base || 0),
+      }));
+    }
+  };
+
   const handleVarChange = (field: string, value: string) => {
     setVariables(prev => ({ ...prev, [field]: value }));
   };
 
-  const parseVariables = () => ({
-    heures_supp: parseFloat(variables.heures_supp) || 0,
-    indemnite_logement: parseFloat(variables.indemnite_logement) || 0,
-    indemnite_transport: parseFloat(variables.indemnite_transport) || 0,
-    sursalaire: parseFloat(variables.sursalaire) || 0,
-    primes_caisse: parseFloat(variables.primes_caisse) || 0,
-    primes_salissure: parseFloat(variables.primes_salissure) || 0,
-    primes_cantine: parseFloat(variables.primes_cantine) || 0,
-    retenue_avance: parseFloat(variables.retenue_avance) || 0,
-    autres_retenues: parseFloat(variables.autres_retenues) || 0,
-  });
+  const parseVariables = () => {
+    const baseIch15 = parseFloat(variables.base_ich15) || 0;
+    const nbJoursIch15 = parseFloat(variables.taux_ich15) || 0;
+
+    return {
+      base_pa02: parseFloat(variables.base_pa02) || 0,
+      taux_pa02: parseFloat(variables.taux_pa02) || 0,
+      hs03: parseFloat(variables.heures_supp) || 0,
+      icl13: parseFloat(variables.indemnite_logement) || 0,
+      ict14: parseFloat(variables.indemnite_transport) || 0,
+      ss05: parseFloat(variables.sursalaire) || 0,
+      ir04: parseFloat(variables.primes_caisse) || 0,
+      ir12: parseFloat(variables.primes_salissure) || 0,
+      base_ich15: baseIch15,
+      taux_ich15: nbJoursIch15,
+      nb_jours_ich15: nbJoursIch15,
+      ras18: parseFloat(variables.retenue_avance) || 0,
+      ar19: parseFloat(variables.autres_retenues) || 0,
+      // Compatibilité
+      heures_supp: parseFloat(variables.heures_supp) || 0,
+      indemnite_logement: parseFloat(variables.indemnite_logement) || 0,
+      indemnite_transport: parseFloat(variables.indemnite_transport) || 0,
+      sursalaire: parseFloat(variables.sursalaire) || 0,
+      primes_caisse: parseFloat(variables.primes_caisse) || 0,
+      primes_salissure: parseFloat(variables.primes_salissure) || 0,
+      primes_cantine: Math.round(baseIch15 * nbJoursIch15),
+      retenue_avance: parseFloat(variables.retenue_avance) || 0,
+      autres_retenues: parseFloat(variables.autres_retenues) || 0,
+    };
+  };
 
   const onSave = async () => {
     if (!employeId || !periodeId) {
@@ -124,7 +169,7 @@ export function NouveauBulletinDrawer({
     try {
       setSaving(true);
       
-      // 1. Calculer
+      // 1. Calculer côté backend
       const calcRes = await fetch('/api/bulletins/calculer', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -156,7 +201,7 @@ export function NouveauBulletinDrawer({
       
       toast.success(isEdit ? 'Bulletin modifié avec succès' : 'Bulletin créé avec succès');
       setOpen(false);
-      router.refresh(); // Update the datatable in the background
+      router.refresh();
     } catch (err: any) {
       toast.error(err.message || 'Erreur inattendue');
     } finally {
@@ -164,7 +209,6 @@ export function NouveauBulletinDrawer({
     }
   };
 
-  // Build items for Base UI Select (items prop requires {label, value} objects)
   const periodeItems = [
     { label: 'Sélectionner une période...', value: '' },
     ...periodes.map(p => ({
@@ -190,7 +234,7 @@ export function NouveauBulletinDrawer({
         <DrawerHeader>
           <DrawerTitle>Générer un bulletin</DrawerTitle>
           <DrawerDescription>
-            Sélectionnez l&apos;employé et la période pour calculer la paie
+            Sélectionnez l&apos;employé et la période, puis renseignez les éléments variables.
           </DrawerDescription>
         </DrawerHeader>
 
@@ -224,7 +268,7 @@ export function NouveauBulletinDrawer({
               <Select
                 items={employeItems}
                 value={employeId}
-                onValueChange={(v) => setEmployeId(v ?? '')}
+                onValueChange={(v) => handleEmployeSelect(v ?? '')}
               >
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder="Sélectionner un employé..." />
@@ -242,30 +286,150 @@ export function NouveauBulletinDrawer({
             </div>
           </div>
 
-          {/* Éléments variables */}
-          <div className="space-y-4">
-            <h2 className="text-base font-semibold">Éléments Variables</h2>
+          {/* Section 1 : Éléments imposables */}
+          <div className="space-y-3">
+            <h3 className="text-sm font-semibold text-foreground tracking-tight">Éléments imposables</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {[
-                { key: 'heures_supp', label: 'Heures Supplémentaires' },
-                { key: 'sursalaire', label: 'Sursalaire' },
-                { key: 'indemnite_logement', label: 'Ind. Logement' },
-                { key: 'indemnite_transport', label: 'Ind. Transport' },
-                { key: 'primes_caisse', label: 'Primes de Caisse' },
-                { key: 'primes_salissure', label: 'Primes de Salissure' },
-                { key: 'primes_cantine', label: 'Primes de Cantine' },
-                { key: 'retenue_avance', label: 'Avance sur Salaire' },
-                { key: 'autres_retenues', label: 'Autres Retenues' },
-              ].map(({ key, label }) => (
-                <div key={key} className="space-y-2">
-                  <Label>{label}</Label>
-                  <Input
-                    type="number"
-                    value={variables[key as keyof typeof variables]}
-                    onChange={e => handleVarChange(key, e.target.value)}
-                  />
-                </div>
-              ))}
+              <div className="space-y-1.5">
+                <Label htmlFor="base_pa02" className="text-xs">Base PA02 (défaut = salaire base)</Label>
+                <Input
+                  id="base_pa02"
+                  type="number"
+                  placeholder="0"
+                  value={variables.base_pa02}
+                  onChange={e => handleVarChange('base_pa02', e.target.value)}
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="taux_pa02" className="text-xs">Taux ancienneté PA02 %</Label>
+                <Input
+                  id="taux_pa02"
+                  type="number"
+                  min="0"
+                  max="100"
+                  step="0.01"
+                  placeholder="0"
+                  value={variables.taux_pa02}
+                  onChange={e => handleVarChange('taux_pa02', e.target.value)}
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="heures_supp" className="text-xs">HS03 - Heures supp.</Label>
+                <Input
+                  id="heures_supp"
+                  type="number"
+                  value={variables.heures_supp}
+                  onChange={e => handleVarChange('heures_supp', e.target.value)}
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="indemnite_logement" className="text-xs">ICL13 - Indemnité logement</Label>
+                <Input
+                  id="indemnite_logement"
+                  type="number"
+                  value={variables.indemnite_logement}
+                  onChange={e => handleVarChange('indemnite_logement', e.target.value)}
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="indemnite_transport" className="text-xs">ICT14 - Indemnité transport</Label>
+                <Input
+                  id="indemnite_transport"
+                  type="number"
+                  value={variables.indemnite_transport}
+                  onChange={e => handleVarChange('indemnite_transport', e.target.value)}
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="sursalaire" className="text-xs">SS05 - Sursalaire</Label>
+                <Input
+                  id="sursalaire"
+                  type="number"
+                  value={variables.sursalaire}
+                  onChange={e => handleVarChange('sursalaire', e.target.value)}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Section 2 : Primes (non imposables) */}
+          <div className="space-y-3">
+            <h3 className="text-sm font-semibold text-foreground tracking-tight">Primes (non imposables)</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label htmlFor="primes_caisse" className="text-xs">IR04 - Primes de Caisse</Label>
+                <Input
+                  id="primes_caisse"
+                  type="number"
+                  value={variables.primes_caisse}
+                  onChange={e => handleVarChange('primes_caisse', e.target.value)}
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="primes_salissure" className="text-xs">IR12 - Primes de Salissure</Label>
+                <Input
+                  id="primes_salissure"
+                  type="number"
+                  value={variables.primes_salissure}
+                  onChange={e => handleVarChange('primes_salissure', e.target.value)}
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="base_ich15" className="text-xs">Base ICH15 - Cantine</Label>
+                <Input
+                  id="base_ich15"
+                  type="number"
+                  placeholder="0"
+                  value={variables.base_ich15}
+                  onChange={e => handleVarChange('base_ich15', e.target.value)}
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="taux_ich15" className="text-xs">Nb jours ICH15 - Cantine</Label>
+                <Input
+                  id="taux_ich15"
+                  type="number"
+                  min="0"
+                  step="1"
+                  placeholder="0"
+                  value={variables.taux_ich15}
+                  onChange={e => handleVarChange('taux_ich15', e.target.value)}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Section 3 : Retenues */}
+          <div className="space-y-3">
+            <h3 className="text-sm font-semibold text-foreground tracking-tight">Retenues</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label htmlFor="retenue_avance" className="text-xs">RAS18 - Retenu/Avance sur salaire</Label>
+                <Input
+                  id="retenue_avance"
+                  type="number"
+                  value={variables.retenue_avance}
+                  onChange={e => handleVarChange('retenue_avance', e.target.value)}
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="autres_retenues" className="text-xs">AR19 - Autres retenues</Label>
+                <Input
+                  id="autres_retenues"
+                  type="number"
+                  value={variables.autres_retenues}
+                  onChange={e => handleVarChange('autres_retenues', e.target.value)}
+                />
+              </div>
             </div>
           </div>
         </div>

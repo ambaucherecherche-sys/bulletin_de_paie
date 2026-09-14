@@ -3,7 +3,7 @@
 import * as React from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Field, FieldLabel, FieldError } from '@/components/ui/field';
+import { Field, FieldLabel } from '@/components/ui/field';
 import { toast } from 'sonner';
 import { Save } from 'lucide-react';
 
@@ -14,12 +14,10 @@ interface Parametre {
 }
 
 const DEFAULT_PARAMS = [
-  { cle: 'TAUX_CNSS', label: 'Taux CNSS (%)', def: '4' },
-  { cle: 'TAUX_AMU', label: 'Taux AMU (%)', def: '5' },
-  { cle: 'ABATTEMENT_IRPP', label: 'Abattement forfaitaire IRPP (%)', def: '28' },
-  { cle: 'SEUIL_ANCIENNETE', label: 'Seuil minimum ancienneté (années)', def: '2' },
-  { cle: 'PLAFOND_ANCIENNETE', label: 'Plafond ancienneté (%)', def: '25' },
-  { cle: 'NB_JOURS_MOIS', label: 'Nombre de jours par mois', def: '30' },
+  { cle: 'taux_cnss', label: 'Taux CNSS (%)', def: '4', step: '0.01', min: '0', max: '100' },
+  { cle: 'taux_amu', label: 'Taux AMU (%)', def: '5', step: '0.01', min: '0', max: '100' },
+  { cle: 'taux_irpp', label: 'Taux IRPP (%)', def: '0', step: '0.01', min: '0', max: '100' },
+  { cle: 'nb_jours_mois', label: 'Nb jours/mois', def: '30', step: '1', min: '1', max: '31' },
 ];
 
 export function ParametresGlobaux() {
@@ -34,10 +32,12 @@ export function ParametresGlobaux() {
         if (res.ok) {
           const data: Parametre[] = await res.json();
           const map: Record<string, string> = {};
-          data.forEach(p => { map[p.cle] = p.valeur; });
+          data.forEach(p => { 
+            map[p.cle.toLowerCase()] = p.valeur; 
+          });
           setParams(map);
         }
-      } catch (err) {
+      } catch {
         toast.error('Erreur de chargement des paramètres');
       } finally {
         setLoading(false);
@@ -54,15 +54,23 @@ export function ParametresGlobaux() {
     setSaving(true);
     try {
       for (const item of DEFAULT_PARAMS) {
-        const val = params[item.cle] || item.def;
+        const val = params[item.cle] !== undefined && params[item.cle] !== '' ? params[item.cle] : item.def;
         await fetch(`/api/parametres/${item.cle}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ valeur: val })
         });
+        // Si nb_jours_mois, synchroniser également nb_jours_travail
+        if (item.cle === 'nb_jours_mois') {
+          await fetch(`/api/parametres/nb_jours_travail`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ valeur: val })
+          }).catch(() => null);
+        }
       }
       toast.success('Paramètres enregistrés avec succès');
-    } catch (err) {
+    } catch {
       toast.error('Erreur lors de la sauvegarde');
     } finally {
       setSaving(false);
@@ -75,7 +83,7 @@ export function ParametresGlobaux() {
     <div className="mx-auto w-full max-w-4xl py-6 px-4">
       <div className="mb-6">
         <h2 className="text-xl font-semibold tracking-tight">Paramètres globaux</h2>
-        <p className="text-sm text-muted-foreground">Configuration générale pour le calcul de la paie.</p>
+        <p className="text-sm text-muted-foreground">Configuration des taux légaux pour le calcul des bulletins de paie.</p>
       </div>
 
       <div className="grid gap-6 sm:grid-cols-2">
@@ -85,7 +93,9 @@ export function ParametresGlobaux() {
             <Input
               id={item.cle}
               type="number"
-              step="any"
+              step={item.step}
+              min={item.min}
+              max={item.max}
               value={params[item.cle] ?? item.def}
               onChange={(e) => handleChange(item.cle, e.target.value)}
             />

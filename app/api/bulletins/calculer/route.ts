@@ -5,10 +5,8 @@ import { query } from '@/lib/db';
 import { 
   calculerBulletinComplet, 
   EmployePaieInfo, 
-  ParametresGlobaux, 
-  BaremeIRPP,
+  ParametresGlobaux,
   ElementsVariables,
-  calculerAnciennete
 } from '@/lib/calcul-paie';
 
 export async function POST(req: Request) {
@@ -26,42 +24,34 @@ export async function POST(req: Request) {
     }
 
     // 1. Récupérer l'employé
-    const employes = await query<EmployePaieInfo>('SELECT id, salaire_base, salaire_categoriel, date_entree, nb_personnes_charge FROM employes WHERE id = ?', [employe_id]);
+    const employes = await query<EmployePaieInfo>(
+      'SELECT id, salaire_base, salaire_categoriel, date_entree, nb_personnes_charge FROM employes WHERE id = ?',
+      [employe_id]
+    );
     if (employes.length === 0) {
       return NextResponse.json({ error: 'Employé introuvable' }, { status: 404 });
     }
     const employe = employes[0];
 
-    // 2. Récupérer la période pour date de calcul
-    const periodes = await query<any>('SELECT date_fin FROM periodes_paie WHERE id = ?', [periode_id]);
-    if (periodes.length === 0) {
-      return NextResponse.json({ error: 'Période introuvable' }, { status: 404 });
-    }
-    const periodeDateFin = new Date(periodes[0].date_fin);
-
-    // 3. Récupérer les paramètres globaux
+    // 2. Récupérer les paramètres globaux depuis la table `parametres`
+    // Les taux sont stockés en % (ex: 4 pour 4%, 5 pour 5%, 0 pour IRPP désactivé)
     const parametresRows = await query<any>('SELECT cle, valeur FROM parametres');
-    const params: Partial<ParametresGlobaux> = {};
-    parametresRows.forEach(row => {
-      const val = parseFloat(row.valeur);
-      if (!isNaN(val)) {
-        (params as any)[row.cle] = val;
-      }
-    });
+    const paramsMap: Record<string, string> = {};
+    parametresRows.forEach((row: any) => { paramsMap[row.cle] = row.valeur; });
 
-    // 4. Récupérer le barème IRPP
-    const baremeRows = await query<any>('SELECT tranche_min, tranche_max, taux FROM bareme_irpp ORDER BY tranche_min ASC');
-    const bareme: BaremeIRPP[] = baremeRows.map(row => ({
-      tranche_min: parseFloat(row.tranche_min),
-      tranche_max: row.tranche_max !== null ? parseFloat(row.tranche_max) : null,
-      taux: parseFloat(row.taux)
-    }));
+    const params: ParametresGlobaux = {
+      taux_cnss: parseFloat(paramsMap['taux_cnss'] ?? '4'),
+      taux_amu:  parseFloat(paramsMap['taux_amu']  ?? '5'),
+      taux_irpp: parseFloat(paramsMap['taux_irpp'] ?? '0'),
+      nb_jours_travail: parseFloat(paramsMap['nb_jours_travail'] ?? paramsMap['nb_jours_mois'] ?? '30'),
+    };
 
-    // 5. Calculer l'ancienneté en années accomplies
-    const { annees } = calculerAnciennete(new Date(employe.date_entree), periodeDateFin);
-
-    // 6. Calculer le bulletin
-    const bulletinCalcule = calculerBulletinComplet(employe, annees, elements_variables as ElementsVariables, params as ParametresGlobaux, bareme);
+    // 3. Calculer le bulletin avec les nouvelles formules
+    const bulletinCalcule = calculerBulletinComplet(
+      employe,
+      elements_variables as ElementsVariables,
+      params
+    );
 
     return NextResponse.json({ success: true, data: bulletinCalcule });
   } catch (error) {

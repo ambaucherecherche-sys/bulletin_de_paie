@@ -37,16 +37,16 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
       ORDER BY r.ordre_affichage ASC
     `, [id]);
 
-    // Fetch cumuls if they exist (either from actual cumuls table or calculate ongoing if draft)
-    const cumuls = await query(`
-      SELECT cum_cnss, cum_irpp, cum_brut 
-      FROM cumuls 
-      WHERE employe_id = ? AND annee = ? AND mois = ?
-    `, [bulletin.employe_id, bulletin.annee, bulletin.mois]);
-    
-    // Si brouillon, les cumuls actuels n'incluent pas ce bulletin, on pourrait les simuler,
-    // mais pour l'affichage brut on renvoie ce qui est en base ou 0.
-    const cumulActuel = cumuls.length > 0 ? cumuls[0] : { cum_cnss: 0, cum_irpp: 0, cum_brut: 0 };
+    // Calcul des cumuls à la volée (valeur_mois × numéro_du_mois)
+    // Ligne MOIS = valeurs du bulletin courant
+    // Ligne EXERCICE = valeurs × mois (ex: mars = × 3)
+    const moisNum = Number(bulletin.mois) || 1;
+    const cumulActuel = {
+      cum_cnss:  Number(bulletin.cnss)         * moisNum,
+      cum_irpp:  Number(bulletin.irpp)         * moisNum,
+      cum_brut:  Number(bulletin.salaire_brut) * moisNum,
+      nb_jours_exercice: moisNum * 30,
+    };
 
     return NextResponse.json({ 
       bulletin, 
@@ -89,6 +89,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     }
 
     // Update bulletin
+    // taux_anciennete stocke taux_pa02, total_autres_retenues = TR20 = IR04+IR12+ICH15
     const updateSql = `
       UPDATE bulletins SET
         employe_id = ?, periode_id = ?,
@@ -104,13 +105,28 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     `;
     const updateParams = [
       employe_id, periode_id,
-      result_calcule.salaire_base, result_calcule.salaire_categoriel, result_calcule.prime_anciennete, result_calcule.taux_anciennete,
-      result_calcule.heures_supp, result_calcule.indemnite_logement, result_calcule.indemnite_transport, result_calcule.total_indemnites_imposables,
-      result_calcule.sursalaire, result_calcule.salaire_brut,
-      result_calcule.irpp, result_calcule.cnss, result_calcule.amu, result_calcule.total_retenues_legales, result_calcule.salaire_net_retenues,
+      result_calcule.salaire_base,
+      result_calcule.salaire_categoriel,
+      result_calcule.prime_anciennete,      // = pa02
+      result_calcule.taux_anciennete,       // = taux_pa02
+      result_calcule.heures_supp,
+      result_calcule.indemnite_logement,
+      result_calcule.indemnite_transport,
+      result_calcule.total_indemnites_imposables,
+      result_calcule.sursalaire,
+      result_calcule.salaire_brut,
+      result_calcule.irpp,
+      result_calcule.cnss,
+      result_calcule.amu,
+      result_calcule.total_retenues_legales,
+      result_calcule.salaire_net_retenues,
       result_calcule.remuneration_totale,
-      result_calcule.primes_caisse, result_calcule.primes_salissure, result_calcule.primes_cantine,
-      result_calcule.retenue_avance, result_calcule.autres_retenues, result_calcule.total_autres_retenues,
+      result_calcule.primes_caisse,
+      result_calcule.primes_salissure,
+      result_calcule.primes_cantine,        // = ich15 calculé
+      result_calcule.retenue_avance,
+      result_calcule.autres_retenues,
+      result_calcule.total_autres_retenues, // TR20 = IR04+IR12+ICH15 (TOTAL AUTRES PRIMES)
       result_calcule.remuneration_nette,
       id
     ];
@@ -123,20 +139,20 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     const getRubId = (code: string) => rubriques.find(r => r.code === code)?.id;
 
     const lignes = [
-      { code: 'SB01', base: result_calcule.salaire_base, gain: result_calcule.salaire_base },
-      { code: 'PA02', base: result_calcule.salaire_categoriel, gain: result_calcule.prime_anciennete, taux: result_calcule.taux_anciennete * 100 },
-      { code: 'HS03', base: result_calcule.heures_supp, gain: result_calcule.heures_supp },
-      { code: 'SS05', base: result_calcule.sursalaire, gain: result_calcule.sursalaire },
-      { code: 'CS07', base: result_calcule.salaire_brut, retenue: result_calcule.cnss },
-      { code: 'IRPP08', base: result_calcule.salaire_brut, retenue: result_calcule.irpp },
-      { code: 'ICL13', base: result_calcule.indemnite_logement, gain: result_calcule.indemnite_logement },
-      { code: 'ICT14', base: result_calcule.indemnite_transport, gain: result_calcule.indemnite_transport },
-      { code: 'AM3', base: result_calcule.salaire_brut, retenue: result_calcule.amu },
-      { code: 'IR04', base: result_calcule.primes_caisse, gain: result_calcule.primes_caisse },
-      { code: 'IR12', base: result_calcule.primes_salissure, gain: result_calcule.primes_salissure },
-      { code: 'ICH15', base: result_calcule.primes_cantine, gain: result_calcule.primes_cantine },
-      { code: 'RAS18', base: result_calcule.retenue_avance, retenue: result_calcule.retenue_avance },
-      { code: 'AR19', base: result_calcule.autres_retenues, retenue: result_calcule.autres_retenues },
+      { code: 'SB01',   base: result_calcule.salaire_base,        gain: result_calcule.salaire_base },
+      { code: 'PA02',   base: result_calcule.salaire_categoriel,  gain: result_calcule.prime_anciennete, taux: result_calcule.taux_anciennete },
+      { code: 'HS03',   base: result_calcule.heures_supp,         gain: result_calcule.heures_supp },
+      { code: 'SS05',   base: result_calcule.sursalaire,          gain: result_calcule.sursalaire },
+      { code: 'ICL13',  base: result_calcule.indemnite_logement,  gain: result_calcule.indemnite_logement },
+      { code: 'ICT14',  base: result_calcule.indemnite_transport, gain: result_calcule.indemnite_transport },
+      { code: 'IRPP08', base: result_calcule.salaire_brut,        retenue: result_calcule.irpp },
+      { code: 'CS07',   base: result_calcule.salaire_brut,        retenue: result_calcule.cnss },
+      { code: 'AM3',    base: result_calcule.salaire_brut,        retenue: result_calcule.amu },
+      { code: 'IR04',   base: result_calcule.primes_caisse,       gain: result_calcule.primes_caisse },
+      { code: 'IR12',   base: result_calcule.primes_salissure,    gain: result_calcule.primes_salissure },
+      { code: 'ICH15',  base: result_calcule.base_ich15 ?? result_calcule.primes_cantine, taux: result_calcule.nb_jours_ich15 ?? result_calcule.taux_ich15, gain: result_calcule.primes_cantine },
+      { code: 'RAS18',  base: result_calcule.retenue_avance,      retenue: result_calcule.retenue_avance },
+      { code: 'AR19',   base: result_calcule.autres_retenues,     retenue: result_calcule.autres_retenues },
     ];
 
     for (const ligne of lignes) {
