@@ -108,6 +108,20 @@ export default function BulletinDetail({ params }: { params: Promise<{ id: strin
     return v;
   };
 
+  // Arrondi à la dizaine supérieure  : 65 929 → 65 930
+  const roundUp10 = (v: any): number | null => {
+    const n = Number(v);
+    if (!v || isNaN(n) || n === 0) return null;
+    return Math.ceil(n / 10) * 10;
+  };
+
+  // Arrondi à la centaine supérieure : 24 990 → 25 000
+  const roundUp100 = (v: any): number | null => {
+    const n = Number(v);
+    if (!v || isNaN(n) || n === 0) return null;
+    return Math.ceil(n / 100) * 100;
+  };
+
   const moisStr = new Date(bulletin.annee, bulletin.mois - 1).toLocaleString('fr-FR', { month: 'long' }).toUpperCase();
 
   const formatDateShort = (dateStr: string) => {
@@ -115,6 +129,9 @@ export default function BulletinDetail({ params }: { params: Promise<{ id: strin
     const d = new Date(dateStr);
     return `${String(d.getDate()).padStart(2, '0')}-${String(d.getMonth()+1).padStart(2, '0')}-${d.getFullYear()}`;
   };
+
+  const displayedTr20 = roundUp100(bulletin.total_autres_retenues) || 0;
+  const displayedSn21 = roundUp10((Number(bulletin.salaire_brut) + displayedTr20) - (Number(bulletin.total_retenues_legales) + Number(bulletin.retenue_avance)));
 
   const rows = [
     { code: 'SB01', label: 'SALAIRE DE BASE', base: bulletin.salaire_base, taux: 30, retenues: null, gains: bulletin.salaire_base },
@@ -129,15 +146,15 @@ export default function BulletinDetail({ params }: { params: Promise<{ id: strin
     { code: 'CS07', label: 'CNSS', base: bulletin.salaire_brut, taux: '4%', retenues: bulletin.cnss, gains: null },
     { code: 'AM3', label: 'AMU', base: bulletin.salaire_brut, taux: '5%', retenues: bulletin.amu, gains: null },
     { code: 'RL10', label: 'TOTAL RETENUES LEGALES', bold: true, base: null, taux: null, retenues: bulletin.total_retenues_legales, gains: null },
-    { code: 'SNR11', label: 'SALAIRE NET APRES RETENUES LEGALES', bold: true, base: null, taux: null, retenues: null, gains: bulletin.salaire_net_retenues },
-    { code: 'RT17', label: 'REMUNERATION TOTALE', bold: true, base: null, taux: null, retenues: null, gains: bulletin.remuneration_totale },
+    { code: 'SNR11', label: 'SALAIRE NET APRES RETENUES LEGALES', bold: true, base: null, taux: null, retenues: null, gains: roundUp10(bulletin.salaire_net_retenues) },
+    { code: 'RT17', label: 'REMUNERATION TOTALE', bold: true, base: null, taux: null, retenues: null, gains: roundUp10(bulletin.remuneration_totale) },
     { code: 'IR04', label: 'PRIMES DE CAISSE', base: null, taux: null, retenues: null, gains: bulletin.primes_caisse, keepDashGains: true },
     { code: 'IR12', label: 'PRIMES DE SALISSURE', base: null, taux: null, retenues: null, gains: bulletin.primes_salissure },
-    { code: 'ICH15', label: 'PRIMES DE CANTINE', base: ligneIch15?.base ?? null, taux: ligneIch15?.taux_ou_nombre ?? null, retenues: null, gains: bulletin.primes_cantine },
+    { code: 'ICH15', label: 'PRIMES DE CANTINE', base: ligneIch15?.base ?? null, taux: ligneIch15?.taux_ou_nombre ?? null, retenues: null, gains: roundUp100(bulletin.primes_cantine) },
     { code: 'RAS18', label: 'RETENU/AVANCE SUR SALAIRE', base: null, taux: null, retenues: bulletin.retenue_avance, gains: null, keepDashRetenues: true },
     { code: 'AR19', label: 'AUTRES RETENUES', base: null, taux: null, retenues: bulletin.autres_retenues, gains: null },
-    { code: 'TR20', label: 'TOTAL AUTRES PRIMES', bold: true, base: null, taux: null, retenues: bulletin.total_autres_retenues, gains: null },
-    { code: 'SN21', label: 'REMUNERATION NETTE', bold: true, base: null, taux: null, retenues: null, gains: bulletin.remuneration_nette },
+    { code: 'TR20', label: 'TOTAL AUTRES PRIMES', bold: true, base: null, taux: null, retenues: displayedTr20, gains: null },
+    { code: 'SN21', label: 'REMUNERATION NETTE', bold: true, base: null, taux: null, retenues: null, gains: displayedSn21 },
   ];
 
   return (
@@ -302,7 +319,7 @@ export default function BulletinDetail({ params }: { params: Promise<{ id: strin
           <div className="flex items-center font-bold text-xs gap-4">
             <span>SALAIRE NET :</span>
             <div className="border border-black px-8 py-1 min-w-[120px] text-right">
-              {formatVal(bulletin.remuneration_nette)}
+              {formatVal(displayedSn21)}
             </div>
           </div>
         </div>

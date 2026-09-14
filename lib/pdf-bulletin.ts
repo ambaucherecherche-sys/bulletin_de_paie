@@ -90,6 +90,18 @@ function dateShort(dateStr: string): string {
   return `${String(d.getDate()).padStart(2,'0')}-${String(d.getMonth()+1).padStart(2,'0')}-${d.getFullYear()}`;
 }
 
+// Arrondi à la dizaine supérieure  : 65 929 → 65 930
+function roundUp10(v: number | null | undefined): number | null {
+  if (v === null || v === undefined || v === 0) return null;
+  return Math.ceil(v / 10) * 10;
+}
+
+// Arrondi à la centaine supérieure : 24 990 → 25 000
+function roundUp100(v: number | null | undefined): number | null {
+  if (v === null || v === undefined || v === 0) return null;
+  return Math.ceil(v / 100) * 100;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Row builder for 21 rubriques
 // ─────────────────────────────────────────────────────────────────────────────
@@ -112,6 +124,10 @@ function buildRows(b: BulletinComplet): Row[] {
   // Pour ICH15, on approxime la base en rétro-calculant si besoin.
   // La base est stockée dans salaire_categoriel, le calcul est : primes_cantine = base_ich15 × taux_ich15/100
   // On affiche primes_cantine comme gain, et on laisse base / taux vides (non restockés séparément)
+
+  const displayedTr20 = roundUp100(b.total_autres_retenues) || 0;
+  const displayedSn21 = roundUp10((Number(b.salaire_brut) + displayedTr20) - (Number(b.total_retenues_legales) + Number(b.retenue_avance)));
+
   return [
     { code: 'SB01',   label: 'SALAIRE DE BASE',                              base: b.salaire_base,               taux: 30,   retenues: null, gains: b.salaire_base },
     { code: 'PA02',   label: "PRIME D'ANCIENNETE",                           base: b.salaire_categoriel,         taux: tauxPa02 > 0 ? `${tauxPa02}%` : null, retenues: null, gains: b.prime_anciennete },
@@ -125,15 +141,15 @@ function buildRows(b: BulletinComplet): Row[] {
     { code: 'CS07',   label: 'CNSS',                                         base: b.salaire_brut,               taux: '4%', retenues: b.cnss, gains: null },
     { code: 'AM3',    label: 'AMU',                                          base: b.salaire_brut,               taux: '5%', retenues: b.amu, gains: null },
     { code: 'RL10',   label: 'TOTAL RETENUES LEGALES',                bold: true, base: null, taux: null, retenues: b.total_retenues_legales, gains: null },
-    { code: 'SNR11',  label: 'SALAIRE NET APRES RETENUES LEGALES',    bold: true, base: null, taux: null, retenues: null, gains: b.salaire_net_retenues },
-    { code: 'RT17',   label: 'REMUNERATION TOTALE',                   bold: true, base: null, taux: null, retenues: null, gains: b.remuneration_totale },
+    { code: 'SNR11',  label: 'SALAIRE NET APRES RETENUES LEGALES',    bold: true, base: null, taux: null, retenues: null, gains: roundUp10(b.salaire_net_retenues) },
+    { code: 'RT17',   label: 'REMUNERATION TOTALE',                   bold: true, base: null, taux: null, retenues: null, gains: roundUp10(b.remuneration_totale) },
     { code: 'IR04',   label: 'PRIMES DE CAISSE',                             base: null,                         taux: null, retenues: null, gains: b.primes_caisse, keepDashGains: true },
     { code: 'IR12',   label: 'PRIMES DE SALISSURE',                         base: null,                         taux: null, retenues: null, gains: b.primes_salissure },
-    { code: 'ICH15',  label: 'PRIMES DE CANTINE',                           base: b.base_ich15 || null,             taux: b.nb_jours_ich15 || null, retenues: null, gains: b.primes_cantine },
+    { code: 'ICH15',  label: 'PRIMES DE CANTINE',                           base: b.base_ich15 || null,             taux: b.nb_jours_ich15 || null, retenues: null, gains: roundUp100(b.primes_cantine) },
     { code: 'RAS18',  label: 'RETENU/AVANCE SUR SALAIRE',                   base: null,                         taux: null, retenues: b.retenue_avance, gains: null, keepDashRetenues: true },
     { code: 'AR19',   label: 'AUTRES RETENUES',                             base: null,                         taux: null, retenues: b.autres_retenues, gains: null },
-    { code: 'TR20',   label: 'TOTAL AUTRES PRIMES',                   bold: true, base: null, taux: null, retenues: b.total_autres_retenues, gains: null },
-    { code: 'SN21',   label: 'REMUNERATION NETTE',                    bold: true, base: null, taux: null, retenues: null, gains: b.remuneration_nette },
+    { code: 'TR20',   label: 'TOTAL AUTRES PRIMES',                   bold: true, base: null, taux: null, retenues: displayedTr20, gains: null },
+    { code: 'SN21',   label: 'REMUNERATION NETTE',                    bold: true, base: null, taux: null, retenues: null, gains: displayedSn21 },
   ];
 }
 
@@ -365,6 +381,10 @@ export async function genererBulletinPDF(
     const snBoxW  = COL.gains;
     const snBoxX  = ML + CW - snBoxW;
 
+    // Recalcul SN21 dynamically for the footer (to sync with the row calculation)
+    const displayedTr20 = roundUp100(bulletin.total_autres_retenues) || 0;
+    const displayedSn21 = roundUp10((Number(bulletin.salaire_brut) + displayedTr20) - (Number(bulletin.total_retenues_legales) + Number(bulletin.retenue_avance)));
+
     doc
       .font('Helvetica-Bold')
       .fontSize(9)
@@ -376,7 +396,7 @@ export async function genererBulletinPDF(
       .font('Helvetica-Bold')
       .fontSize(9)
       .fillColor(BLACK)
-      .text(fmt(bulletin.remuneration_nette), snBoxX + 2, Y + 5, { width: snBoxW - 4, align: 'right', lineBreak: false });
+      .text(fmt(displayedSn21), snBoxX + 2, Y + 5, { width: snBoxW - 4, align: 'right', lineBreak: false });
 
     Y += SN_H + 4;
 

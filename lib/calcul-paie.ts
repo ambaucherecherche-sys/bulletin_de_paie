@@ -153,20 +153,20 @@ export function calculerBulletinComplet(
   // RL10 = IRPP08 + CS07 + AM3
   const rl10 = irpp08 + cs07 + am3;
 
-  // SNR11 = SB06 - RL10
-  const snr11 = sb06 - rl10;
+  // SNR11 = SB06 - RL10  (arrondi à la dizaine supérieure)
+  const snr11 = Math.ceil((sb06 - rl10) / 10) * 10;
 
-  // RT17 = SNR11
+  // RT17 = SNR11  (hérite de l'arrondi de snr11)
   const rt17 = snr11;
 
-  // ICH15 = base_ich15 × nb_jours_ich15 (nombre de jours, pas en pourcentage)
-  const ich15 = Math.round(base_ich15 * nb_jours_ich15);
+  // ICH15 = base_ich15 × nb_jours_ich15 (arrondi à la centaine supérieure : 24 990 → 25 000)
+  const ich15 = Math.ceil((base_ich15 * nb_jours_ich15) / 100) * 100;
 
-  // TR20 = IR04 + IR12 + ICH15  (TOTAL AUTRES PRIMES)
-  const tr20 = ir04 + ir12 + ich15;
+  // TR20 = IR04 + IR12 + ICH15  (TOTAL AUTRES PRIMES — arrondi à la centaine supérieure)
+  const tr20 = Math.ceil((ir04 + ir12 + ich15) / 100) * 100;
 
-  // SN21 = (SB06 + TR20) - (RL10 + RAS18)
-  const sn21 = (sb06 + tr20) - (rl10 + ras18);
+  // SN21 = (SB06 + TR20) - (RL10 + RAS18)  (arrondi à la dizaine supérieure)
+  const sn21 = Math.ceil(((sb06 + tr20) - (rl10 + ras18)) / 10) * 10;
 
   return {
     // Rubriques calculées (noms courts)
