@@ -53,6 +53,21 @@ interface NouveauBulletinDrawerProps {
   bulletinId?: number;
 }
 
+const DEFAULT_VARIABLES = {
+  base_pa02: '',
+  taux_pa02: '0',
+  heures_supp: '0',
+  indemnite_logement: '0',
+  indemnite_transport: '0',
+  sursalaire: '0',
+  primes_caisse: '0',
+  primes_salissure: '0',
+  base_ich15: '0',
+  taux_ich15: '0',
+  retenue_avance: '0',
+  autres_retenues: '0',
+};
+
 export function NouveauBulletinDrawer({
   trigger,
   open: controlledOpen,
@@ -76,23 +91,12 @@ export function NouveauBulletinDrawer({
   const setOpen = setControlledOpen || setUncontrolledOpen;
 
   const [hasFetched, setHasFetched] = useState(false);
+  const [loadingBulletin, setLoadingBulletin] = useState(false);
 
   // Éléments variables
-  const [variables, setVariables] = useState({
-    base_pa02: '',
-    taux_pa02: '0',
-    heures_supp: '0',
-    indemnite_logement: '0',
-    indemnite_transport: '0',
-    sursalaire: '0',
-    primes_caisse: '0',
-    primes_salissure: '0',
-    base_ich15: '0',
-    taux_ich15: '0', // Nombre de jours ICH15
-    retenue_avance: '0',
-    autres_retenues: '0',
-  });
+  const [variables, setVariables] = useState({ ...DEFAULT_VARIABLES });
 
+  // Charger les listes employés/périodes à l'ouverture
   useEffect(() => {
     if (open && !hasFetched) {
       const fetchData = async () => {
@@ -114,14 +118,66 @@ export function NouveauBulletinDrawer({
     }
   }, [open, hasFetched]);
 
+  // Charger les données du bulletin existant pour pré-remplir les champs en mode édition
+  useEffect(() => {
+    if (open && bulletinId) {
+      const fetchBulletinData = async () => {
+        try {
+          setLoadingBulletin(true);
+          const res = await fetch(`/api/bulletins/${bulletinId}`);
+          if (!res.ok) return;
+          const json = await res.json();
+          const b = json.bulletin;
+          const lignes: any[] = json.lignes ?? [];
+
+          // Retrouver la ligne ICH15 pour base et nb_jours
+          const ligneIch15 = lignes.find((l: any) => l.code === 'ICH15');
+
+          setEmployeId(String(b.employe_id));
+          setPeriodeId(String(b.periode_id));
+
+          setVariables({
+            base_pa02: String(b.salaire_categoriel || b.salaire_base || ''),
+            taux_pa02: String(b.taux_anciennete || '0'),
+            heures_supp: String(b.heures_supp || '0'),
+            indemnite_logement: String(b.indemnite_logement || '0'),
+            indemnite_transport: String(b.indemnite_transport || '0'),
+            sursalaire: String(b.sursalaire || '0'),
+            primes_caisse: String(b.primes_caisse || '0'),
+            primes_salissure: String(b.primes_salissure || '0'),
+            base_ich15: String(ligneIch15?.base || '0'),
+            taux_ich15: String(ligneIch15?.taux_ou_nombre || '0'),
+            retenue_avance: String(b.retenue_avance || '0'),
+            autres_retenues: String(b.autres_retenues || '0'),
+          });
+        } catch {
+          toast.error('Impossible de charger les données du bulletin');
+        } finally {
+          setLoadingBulletin(false);
+        }
+      };
+      fetchBulletinData();
+    }
+  }, [open, bulletinId]);
+
+  // Réinitialiser l'état à la fermeture pour permettre un rechargement propre à la prochaine ouverture
+  useEffect(() => {
+    if (!open) {
+      setHasFetched(false);
+    }
+  }, [open]);
+
   const handleEmployeSelect = (idStr: string) => {
     setEmployeId(idStr);
-    const emp = employes.find(e => e.id.toString() === idStr);
-    if (emp && emp.salaire_base !== undefined) {
-      setVariables(prev => ({
-        ...prev,
-        base_pa02: String(emp.salaire_base || 0),
-      }));
+    // En mode création uniquement, on pré-remplit la base PA02 depuis le salaire de l'employé
+    if (!bulletinId) {
+      const emp = employes.find(e => e.id.toString() === idStr);
+      if (emp && emp.salaire_base !== undefined) {
+        setVariables(prev => ({
+          ...prev,
+          base_pa02: String(emp.salaire_base || 0),
+        }));
+      }
     }
   };
 
@@ -225,6 +281,8 @@ export function NouveauBulletinDrawer({
     }))
   ];
 
+  const isEdit = !!bulletinId;
+
   return (
     <Drawer showSwipeHandle={isMobile} swipeDirection={swipeDirection} open={open} onOpenChange={setOpen}>
       {trigger !== null && (
@@ -232,12 +290,17 @@ export function NouveauBulletinDrawer({
       )}
       <DrawerContent className={!isMobile ? "right-0 left-auto top-0 bottom-0 mt-0 w-[600px] sm:w-[800px] rounded-l-xl rounded-r-none" : ""}>
         <DrawerHeader>
-          <DrawerTitle>Générer un bulletin</DrawerTitle>
+          <DrawerTitle>{isEdit ? 'Modifier le bulletin' : 'Générer un bulletin'}</DrawerTitle>
           <DrawerDescription>
             Sélectionnez l&apos;employé et la période, puis renseignez les éléments variables.
           </DrawerDescription>
         </DrawerHeader>
 
+        {loadingBulletin ? (
+          <div className="flex-1 flex items-center justify-center p-6 text-muted-foreground">
+            Chargement des données du bulletin...
+          </div>
+        ) : (
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
           {/* Période + Employé */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -247,6 +310,7 @@ export function NouveauBulletinDrawer({
                 items={periodeItems}
                 value={periodeId}
                 onValueChange={(v) => setPeriodeId(v ?? '')}
+                disabled={isEdit}
               >
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder="Sélectionner une période..." />
@@ -269,6 +333,7 @@ export function NouveauBulletinDrawer({
                 items={employeItems}
                 value={employeId}
                 onValueChange={(v) => handleEmployeSelect(v ?? '')}
+                disabled={isEdit}
               >
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder="Sélectionner un employé..." />
@@ -433,11 +498,12 @@ export function NouveauBulletinDrawer({
             </div>
           </div>
         </div>
+        )}
 
         <DrawerFooter className="flex flex-row justify-end gap-3 pt-4 border-t">
           <DrawerClose render={<Button variant="outline">Annuler</Button>} />
-          <Button onClick={onSave} disabled={saving}>
-            {saving ? 'Création en cours...' : 'Générer et enregistrer'}
+          <Button onClick={onSave} disabled={saving || loadingBulletin}>
+            {saving ? (isEdit ? 'Modification...' : 'Création en cours...') : (isEdit ? 'Enregistrer les modifications' : 'Générer et enregistrer')}
           </Button>
         </DrawerFooter>
       </DrawerContent>

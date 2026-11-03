@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { CheckCircle, Trash2, ArrowLeft, Printer, MoreHorizontal, FileDown } from 'lucide-react';
+import { CheckCircle, Trash2, ArrowLeft, MoreHorizontal, FileDown } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -33,6 +33,7 @@ export default function BulletinDetail({ params }: { params: Promise<{ id: strin
   const [loading, setLoading] = useState(true);
   const [validating, setValidating] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [downloading, setDownloading] = useState(false);
   const [validateOpen, setValidateOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
 
@@ -86,6 +87,30 @@ export default function BulletinDetail({ params }: { params: Promise<{ id: strin
     } catch (err: any) {
       toast.error(err.message);
       setDeleting(false);
+    }
+  };
+
+  const handleDownloadPDF = async () => {
+    try {
+      setDownloading(true);
+      const res = await fetch(`/api/bulletins/${fetchId}/pdf`);
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}));
+        throw new Error(json.error || 'Erreur lors du téléchargement');
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `bulletin-${data?.bulletin?.numero ?? fetchId}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err: any) {
+      toast.error(err.message || 'Impossible de télécharger le PDF');
+    } finally {
+      setDownloading(false);
     }
   };
 
@@ -183,18 +208,11 @@ export default function BulletinDetail({ params }: { params: Promise<{ id: strin
           <DropdownMenuContent align="end">
             <DropdownMenuGroup>
               <DropdownMenuLabel>Actions</DropdownMenuLabel>
-              <DropdownMenuItem onClick={() => window.print()}>
-                <Printer className="w-4 h-4 mr-2" /> Imprimer
-              </DropdownMenuItem>
               <DropdownMenuItem
-                onClick={() => {
-                  const a = document.createElement('a');
-                  a.href = `/api/bulletins/${fetchId}/pdf`;
-                  a.download = `bulletin-${bulletin.numero}.pdf`;
-                  a.click();
-                }}
+                onClick={handleDownloadPDF}
+                disabled={downloading}
               >
-                <FileDown className="w-4 h-4 mr-2" /> Télécharger PDF
+                <FileDown className="w-4 h-4 mr-2" /> {downloading ? 'Téléchargement...' : 'Télécharger PDF'}
               </DropdownMenuItem>
               {isBrouillon && (
                 <DropdownMenuItem onClick={() => setValidateOpen(true)} disabled={validating || deleting}>

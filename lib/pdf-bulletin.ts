@@ -84,22 +84,25 @@ function moisLabel(mois: number): string {
   return noms[mois - 1] ?? '';
 }
 
-function dateShort(dateStr: string): string {
+function dateShort(dateStr: string | Date | null | undefined): string {
   if (!dateStr) return '';
   const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return String(dateStr);
   return `${String(d.getDate()).padStart(2,'0')}-${String(d.getMonth()+1).padStart(2,'0')}-${d.getFullYear()}`;
 }
 
 // Arrondi à la dizaine supérieure  : 65 929 → 65 930
-function roundUp10(v: number | null | undefined): number | null {
-  if (v === null || v === undefined || v === 0) return null;
-  return Math.ceil(v / 10) * 10;
+function roundUp10(v: number | string | null | undefined): number | null {
+  const n = Number(v);
+  if (!v || isNaN(n) || n === 0) return null;
+  return Math.ceil(n / 10) * 10;
 }
 
 // Arrondi à la centaine supérieure : 24 990 → 25 000
-function roundUp100(v: number | null | undefined): number | null {
-  if (v === null || v === undefined || v === 0) return null;
-  return Math.ceil(v / 100) * 100;
+function roundUp100(v: number | string | null | undefined): number | null {
+  const n = Number(v);
+  if (!v || isNaN(n) || n === 0) return null;
+  return Math.ceil(n / 100) * 100;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

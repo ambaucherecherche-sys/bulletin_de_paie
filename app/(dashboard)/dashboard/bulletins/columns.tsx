@@ -41,6 +41,8 @@ function ActionsCell({ row }: { row: any }) {
   const bulletin = row.original as BulletinRow;
   const [isDrawerOpen, setIsDrawerOpen] = React.useState(false);
 
+  const isBrouillon = bulletin.statut === 'brouillon';
+
   return (
     <>
       <DropdownMenu>
@@ -54,25 +56,29 @@ function ActionsCell({ row }: { row: any }) {
             <DropdownMenuItem onClick={() => router.push(`/dashboard/bulletins/${bulletin.id}`)}>
               Voir bulletin
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => {
-              setIsDrawerOpen(true);
-            }}>
-              Modifier
-            </DropdownMenuItem>
+            {isBrouillon && (
+              <DropdownMenuItem onClick={() => {
+                setIsDrawerOpen(true);
+              }}>
+                Modifier
+              </DropdownMenuItem>
+            )}
           </DropdownMenuGroup>
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <NouveauBulletinDrawer
-        trigger={null}
-        open={isDrawerOpen}
-        onOpenChange={setIsDrawerOpen}
-        defaultValues={{
-          employeId: bulletin.employe_id.toString(),
-          periodeId: bulletin.periode_id.toString(),
-        }}
-        bulletinId={bulletin.id}
-      />
+      {isBrouillon && (
+        <NouveauBulletinDrawer
+          trigger={null}
+          open={isDrawerOpen}
+          onOpenChange={setIsDrawerOpen}
+          defaultValues={{
+            employeId: bulletin.employe_id.toString(),
+            periodeId: bulletin.periode_id.toString(),
+          }}
+          bulletinId={bulletin.id}
+        />
+      )}
     </>
   );
 }

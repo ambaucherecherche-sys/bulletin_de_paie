@@ -56,25 +56,19 @@ export async function GET(
     // genererBulletinPDF calcule les cumuls exercice à la volée via le numéro du mois
     const pdfBuffer = await genererBulletinPDF(bulletin, Number(bulletin.mois) || 1);
 
-    const filename = `bulletin-${bulletin.numero}.pdf`;
+    const safeNumero = String(bulletin.numero || id).replace(/[^a-zA-Z0-9_-]/g, '_');
+    const filename = `bulletin-${safeNumero}.pdf`;
 
-    // Buffer.buffer gives the underlying ArrayBuffer which is always a valid BodyInit
-    const arrayBuffer = pdfBuffer.buffer.slice(
-      pdfBuffer.byteOffset,
-      pdfBuffer.byteOffset + pdfBuffer.byteLength
-    ) as ArrayBuffer;
-
-    return new Response(arrayBuffer, {
+    return new Response(new Uint8Array(pdfBuffer), {
       status: 200,
       headers: {
         'Content-Type': 'application/pdf',
         'Content-Disposition': `attachment; filename="${filename}"`,
-        'Content-Length': String(pdfBuffer.length),
-        'Cache-Control': 'no-store',
+        'Cache-Control': 'no-store, no-cache, must-revalidate',
       },
     });
   } catch (error) {
     console.error('Erreur GET /api/bulletins/[id]/pdf:', error);
-    return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 });
+    return NextResponse.json({ error: 'Erreur serveur lors de la génération du PDF' }, { status: 500 });
   }
 }
