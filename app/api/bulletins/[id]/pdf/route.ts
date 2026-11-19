@@ -4,7 +4,9 @@ import { authOptions } from '@/lib/auth';
 import { query } from '@/lib/db';
 import { genererBulletinPDF } from '@/lib/pdf-bulletin';
 
-export async function GET(
+export const runtime = 'nodejs';
+
+async function handlePdfRequest(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -55,6 +57,9 @@ export async function GET(
     // ── Generate PDF ────────────────────────────────────────────────────────
     // genererBulletinPDF calcule les cumuls exercice à la volée via le numéro du mois
     const pdfBuffer = await genererBulletinPDF(bulletin, Number(bulletin.mois) || 1);
+    if (pdfBuffer.length === 0) {
+      throw new Error('La génération du PDF a produit un fichier vide');
+    }
 
     const safeNumero = String(bulletin.numero || id).replace(/[^a-zA-Z0-9_-]/g, '_');
     const filename = `bulletin-${safeNumero}.pdf`;
@@ -63,6 +68,7 @@ export async function GET(
       status: 200,
       headers: {
         'Content-Type': 'application/pdf',
+        'Content-Length': String(pdfBuffer.length),
         'Content-Disposition': `attachment; filename="${filename}"`,
         'Cache-Control': 'no-store, no-cache, must-revalidate',
       },
@@ -71,4 +77,18 @@ export async function GET(
     console.error('Erreur GET /api/bulletins/[id]/pdf:', error);
     return NextResponse.json({ error: 'Erreur serveur lors de la génération du PDF' }, { status: 500 });
   }
+}
+
+export async function GET(
+  request: Request,
+  context: { params: Promise<{ id: string }> }
+) {
+  return handlePdfRequest(request, context);
+}
+
+export async function POST(
+  request: Request,
+  context: { params: Promise<{ id: string }> }
+) {
+  return handlePdfRequest(request, context);
 }

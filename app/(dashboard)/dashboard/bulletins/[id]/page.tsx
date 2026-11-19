@@ -93,12 +93,20 @@ export default function BulletinDetail({ params }: { params: Promise<{ id: strin
   const handleDownloadPDF = async () => {
     try {
       setDownloading(true);
-      const res = await fetch(`/api/bulletins/${fetchId}/pdf`);
+      const res = await fetch(`/api/bulletins/${fetchId}/pdf`, { method: 'POST' });
       if (!res.ok) {
         const json = await res.json().catch(() => ({}));
         throw new Error(json.error || 'Erreur lors du téléchargement');
       }
+
+      const contentType = res.headers.get('content-type') || '';
       const blob = await res.blob();
+      if (res.status === 204 || !contentType.includes('application/pdf') || blob.size === 0) {
+        throw new Error(
+          'Le PDF n’a pas été reçu. Actualisez la page et désactivez IDM Advanced Integration pour localhost, puis réessayez.'
+        );
+      }
+
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -106,9 +114,9 @@ export default function BulletinDetail({ params }: { params: Promise<{ id: strin
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    } catch (err: any) {
-      toast.error(err.message || 'Impossible de télécharger le PDF');
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Impossible de télécharger le PDF');
     } finally {
       setDownloading(false);
     }
@@ -199,41 +207,40 @@ export default function BulletinDetail({ params }: { params: Promise<{ id: strin
           </Badge>
         </div>
 
-        {/* Droite : trois points */}
-        <DropdownMenu>
-          <DropdownMenuTrigger render={<Button variant="ghost" className="h-8 w-8 p-0" />}>
-            <span className="sr-only">Ouvrir le menu</span>
-            <MoreHorizontal className="h-4 w-4" />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuGroup>
-              <DropdownMenuLabel>Actions</DropdownMenuLabel>
-              <DropdownMenuItem
-                onClick={handleDownloadPDF}
-                disabled={downloading}
-              >
-                <FileDown className="w-4 h-4 mr-2" /> {downloading ? 'Téléchargement...' : 'Télécharger PDF'}
-              </DropdownMenuItem>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={handleDownloadPDF} disabled={downloading}>
+            <FileDown data-icon="inline-start" />
+            {downloading ? 'Téléchargement...' : 'Télécharger PDF'}
+          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger render={<Button variant="ghost" className="h-8 w-8 p-0" />}>
+              <span className="sr-only">Ouvrir le menu</span>
+              <MoreHorizontal className="h-4 w-4" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuGroup>
+                <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                {isBrouillon && (
+                  <DropdownMenuItem onClick={() => setValidateOpen(true)} disabled={validating || deleting}>
+                    <CheckCircle className="w-4 h-4 mr-2" /> Valider
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuGroup>
               {isBrouillon && (
-                <DropdownMenuItem onClick={() => setValidateOpen(true)} disabled={validating || deleting}>
-                  <CheckCircle className="w-4 h-4 mr-2" /> Valider
-                </DropdownMenuItem>
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    className="text-destructive focus:text-destructive"
+                    onClick={() => setDeleteOpen(true)}
+                    disabled={deleting || validating}
+                  >
+                    <Trash2 className="w-4 h-4 mr-2" /> Supprimer
+                  </DropdownMenuItem>
+                </>
               )}
-            </DropdownMenuGroup>
-            {isBrouillon && (
-              <>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  className="text-destructive focus:text-destructive"
-                  onClick={() => setDeleteOpen(true)}
-                  disabled={deleting || validating}
-                >
-                  <Trash2 className="w-4 h-4 mr-2" /> Supprimer
-                </DropdownMenuItem>
-              </>
-            )}
-          </DropdownMenuContent>
-        </DropdownMenu>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
 
       <AlertDialog open={validateOpen} onOpenChange={setValidateOpen}>
